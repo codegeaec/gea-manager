@@ -2,11 +2,10 @@
 
 # CLAUDE.md — gea-manager
 
-Instrucciones específicas de Claude Code para este repo. Las reglas
-compartidas viven en `AGENTS.md` (importado arriba) y `.agents/`.
+Claude-Code-specific instructions for this repo. Shared rules live in
+`AGENTS.md` (imported above) and `.agents/`.
 
-A diferencia de Cotizaciones, en **este** repo Claude Code sí implementa
-directamente — todavía no existe un sistema de delegación para gea-manager
-(es el propio producto que lo provee). Cuando `gea init` funcione, este
-mismo repo se autoinicializa con `gea init` y desde ahí puede delegar como
-cualquier otro proyecto.
+Claude Code implements directly in this repo — there's no delegation
+system for gea-manager yet (this repo is the product that provides one).
+Once `gea init` works, this repo can self-initialize with `gea init` and
+delegate like any other project from there.

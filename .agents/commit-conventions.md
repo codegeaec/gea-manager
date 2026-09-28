@@ -1,11 +1,8 @@
-# Convenciones de commits — gea-manager
+# Commit conventions — gea-manager
 
-Este repo usa `lang.commits: en` (es el ejemplo real de esa opción del
-wizard de `gea init`).
+## Format
 
-## Formato
-
-[Conventional Commits](https://www.conventionalcommits.org/), en inglés:
+[Conventional Commits](https://www.conventionalcommits.org/):
 
 ```
 <type>(<scope>): <imperative, lowercase, no trailing period>

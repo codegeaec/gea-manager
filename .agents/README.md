@@ -1,12 +1,12 @@
 # .agents/
 
-Convenciones operativas de gea-manager. `AGENTS.md` en la raíz resume las
-reglas duras; acá está el detalle.
+Operational conventions for gea-manager. `AGENTS.md` at the root summarizes
+the hard rules; this is where the detail lives.
 
-| Archivo | Qué define |
+| File | What it defines |
 |---|---|
-| [`convenciones-commits.md`](./convenciones-commits.md) | Formato de commits (inglés), atomicidad, scopes |
-| [`gotchas.md`](./gotchas.md) | Problemas concretos ya resueltos |
+| [`commit-conventions.md`](./commit-conventions.md) | Commit format, atomicity, scopes |
+| [`gotchas.md`](./gotchas.md) | Concrete problems already solved |
 
-Este repo no tiene `builder.md` propio todavía: no hay delegación hasta que
-`gea` exista y pueda auto-inicializarse.
+This repo doesn't have its own `builder.md` yet: there's no delegation
+until `gea` exists and can self-initialize.

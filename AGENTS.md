@@ -1,61 +1,62 @@
 # AGENTS.md — gea-manager
 
-Reglas compartidas del proyecto que construye `gea`: el instalador y
-orquestador de agentes de IA (Claude Code, OpenCode, Codex CLI, agy, Kimi
-Code) sobre `herdr`. Las lee **Claude Code** (vía `CLAUDE.md`, que lo
-importa) y cualquier otro agente que trabaje en este repo.
+Shared project rules for `gea`: the installer and orchestrator for AI coding
+agents (Claude Code, OpenCode, Codex CLI, agy, Kimi Code) on top of `herdr`.
+Read by **Claude Code** (via `CLAUDE.md`, which imports it) and any other
+agent working in this repo.
 
-## Idioma
+## Language
 
-- **Commits: en inglés** (`lang.commits: en` en el propio `gea.json` de este
-  repo — es el ejemplo real de esa opción del wizard).
-- **Docs internos (`.agents/`, comentarios de dominio): español.**
-- **UI del CLI (`src/gea/i18n/`): bilingüe** (es por defecto, en disponible)
-  — ver `docs/` para el mecanismo de catálogos.
-- Identificadores de código (variables, funciones, módulos): inglés.
+- **Commits, docs (`.agents/`, this file, `CLAUDE.md`), and code
+  identifiers: English.**
+- **UI strings (`src/gea/i18n/`): bilingual** (Spanish by default,
+  English available) — see `docs/` for the catalog mechanism. This is
+  the one place Spanish is a first-class option: gea is meant to be used
+  by Spanish-speaking teams by default, even though the project that
+  builds it is documented in English.
 
-## Reglas duras
+## Hard rules
 
-1. **Máximo 400 líneas por archivo.** Si un cambio genuinamente necesita
-   más, se justifica en la task (`## Decisions`) en vez de partir el archivo
-   de forma artificial. Preferir dividir en módulos antes de llegar al
-   límite.
-2. **Sin dependencias de runtime.** `gea` corre con la librería estándar de
-   Python (argparse, json, subprocess, pathlib). Dependencias de desarrollo
-   (`pytest`, `ruff`) sí van en `[dependency-groups] dev`.
-3. **Reutilizar antes de crear.** Antes de escribir un helper nuevo, revisar
-   si ya existe algo equivalente en `src/gea/`. No duplicar lógica entre
-   módulos — extraer a un helper compartido.
-4. **`herdr` es la única forma de hablar con paneles de otros agentes.**
-   Nunca asumir el shape exacto de su JSON sin haberlo comprobado (`herdr
-   --skill` es la fuente de verdad, igual que en el proyecto Cotizaciones).
-5. **Nunca hardcodear rutas de la máquina del autor.** Todo camino
-   específico de usuario pasa por `src/gea/paths.py`.
-6. **Nomenclatura:** archivos y módulos en `snake_case` (convención Python),
-   clases en `PascalCase`, funciones/variables en `snake_case`, constantes en
-   `SCREAMING_SNAKE_CASE`.
-7. **Commits atómicos, sin coautor ni firma de herramienta**, formato
-   [Conventional Commits](https://www.conventionalcommits.org/) en inglés
-   (`feat(tasks): add subtask command`).
-8. **Nunca ejecutar acciones destructivas en la máquina del usuario sin
-   confirmar** (borrar configs, modificar `.bashrc`/`.zshrc`, borrar MCPs) —
-   siempre con backup y una confirmación explícita salvo `--yes`.
+1. **400 lines per file, max.** If a change genuinely needs more, justify
+   it in the task (`## Decisions`) instead of splitting the file
+   artificially. Prefer splitting into modules before hitting the limit.
+2. **No runtime dependencies.** `gea` runs on the Python standard library
+   (argparse, json, subprocess, pathlib). Dev dependencies (`pytest`,
+   `ruff`) belong in `[dependency-groups] dev`.
+3. **Reuse before creating.** Before writing a new helper, check whether
+   something equivalent already exists in `src/gea/`. Don't duplicate logic
+   across modules — extract a shared helper instead.
+4. **`herdr` is the only way to talk to another agent's pane.** Never
+   assume the exact shape of its JSON without checking — `herdr --skill`
+   is the source of truth.
+5. **Never hardcode a path specific to the author's machine.** Every
+   user-machine-specific path goes through `src/gea/paths.py`.
+6. **Naming:** files and modules in `snake_case` (Python convention),
+   classes in `PascalCase`, functions/variables in `snake_case`, constants
+   in `SCREAMING_SNAKE_CASE`.
+7. **Atomic commits, no co-author or tool signature**,
+   [Conventional Commits](https://www.conventionalcommits.org/) format in
+   English (`feat(tasks): add subtask command`).
+8. **Never run a destructive action on the user's machine without
+   confirming** (deleting configs, editing `.bashrc`/`.zshrc`, removing
+   MCP servers) — always with a backup and explicit confirmation unless
+   `--yes` was passed.
 
-## Estructura
+## Structure
 
-| Ruta | Qué contiene |
+| Path | Contents |
 |---|---|
-| `src/gea/cli.py` | Punto de entrada, parseo de subcomandos |
-| `src/gea/i18n/` | Catálogos `es.json` / `en.json` + helper `t()` |
-| `src/gea/setup/` | `gea setup`: tools, shell rc, instrucciones globales, skills |
-| `src/gea/agents/` | Perfiles de builder, estado de agotamiento, delegación vía herdr |
-| `src/gea/tasks/` | Tasks/subtasks: store y comandos |
-| `src/gea/init/` | Wizard de `gea init`, detección de stack, scaffold |
-| `src/gea/templates/{es,en}/` | Plantillas de AGENTS.md, `.agents/`, docs, tasks |
-| `skills/gea-*` | Skills instalables globalmente (init, plan, delegate, review) |
-| `tests/` | pytest — subprocess/herdr mockeados, sin tocar la red ni la máquina real |
+| `src/gea/cli.py` | Entry point, subcommand parsing |
+| `src/gea/i18n/` | `es.json` / `en.json` catalogs + `t()` helper |
+| `src/gea/setup/` | `gea setup`: tools, shell rc, global instructions, skills |
+| `src/gea/agents/` | Builder profiles, exhaustion state, herdr-based delegation |
+| `src/gea/tasks/` | Tasks/subtasks: store and commands |
+| `src/gea/init/` | `gea init` wizard, stack detection, scaffold |
+| `src/gea/templates/{es,en}/` | AGENTS.md, `.agents/`, docs, task templates |
+| `skills/gea-*` | Globally installable skills (init, plan, delegate, review) |
+| `tests/` | pytest — subprocess/herdr mocked, never touches the network or the real machine |
 
-## Verificación
+## Verification
 
 ```bash
 uv run ruff check .
@@ -63,6 +64,6 @@ uv run pytest
 shellcheck install.sh
 ```
 
-No hay `pnpm dev`/build que evitar acá (no es un proyecto Next.js) — pero sí
-evitar instalar cosas de verdad en la máquina del autor al testear: los
-tests mockean `subprocess.run`/`shutil.which` en vez de instalar tools reales.
+There's no `pnpm dev`/build to avoid here (not a Next.js project) — but
+tests must never install anything for real on the author's machine: mock
+`subprocess.run`/`shutil.which` instead of running actual installers.

@@ -1,4 +1,4 @@
 # Gotchas — gea-manager
 
-Archivo vivo: se actualiza siempre que algo cueste más de 15 min a
-resolver. Vacío por ahora (proyecto recién bootstrapeado).
+Living file: updated whenever something costs more than 15 minutes to
+figure out. Empty for now (freshly bootstrapped project).
