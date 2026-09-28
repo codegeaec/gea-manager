@@ -20,7 +20,7 @@ if command -v uv >/dev/null 2>&1; then
 else
   info "Installing uv"
   curl -LsSf https://astral.sh/uv/install.sh | sh
-  # shellcheck disable=SC1090
+  # shellcheck disable=SC1091
   source "$HOME/.local/bin/env" 2>/dev/null || export PATH="$HOME/.local/bin:$PATH"
   if ! command -v uv >/dev/null 2>&1; then
     err "could not install uv — install it manually from https://astral.sh/uv and re-run this script"
