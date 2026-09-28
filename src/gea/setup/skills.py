@@ -11,11 +11,20 @@ from pathlib import Path
 
 from gea import proc, ui
 
-# Third-party skills recommended by gea (see the plan's rationale for each).
+# Third-party skills recommended by gea. Each entry points at one exact
+# skill subpath, not a bare repo — several of these repos bundle many
+# unrelated skills (e.g. dietrichgebert/ponytail also ships ponytail-audit/
+# -debt/-gain/-help/-review; vercel-labs/agent-skills is a 9-skill Vercel
+# deploy bundle with nothing to do with skill discovery). Pointing `npx
+# skills add` at a whole multi-skill repo makes it prompt interactively
+# "select skills to install" for everything in it — not what a
+# non-interactive `gea setup` step should ever trigger. A `.../tree/main/
+# skills/<path>` URL resolves to exactly one skill, no prompt.
 THIRD_PARTY_SKILLS = [
-    "dietrichgebert/ponytail",
-    "vercel-labs/agent-skills",  # grill-me / find-skills live in this bundle
-    "nextlevelbuilder/ui-ux-pro-max-skill",
+    "https://github.com/dietrichgebert/ponytail/tree/main/skills/ponytail",
+    "https://github.com/mattpocock/skills/tree/main/skills/productivity/grill-me",
+    "https://github.com/vercel-labs/skills/tree/main/skills/find-skills",
+    "nextlevelbuilder/ui-ux-pro-max-skill",  # this repo IS a single skill
 ]
 
 # Maps a detected agent binary to the id `npx skills` expects via `-a`.
