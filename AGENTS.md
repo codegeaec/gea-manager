@@ -53,7 +53,7 @@ agent working in this repo.
 | `src/gea/tasks/` | Tasks/subtasks: store and commands |
 | `src/gea/init/` | `gea init` wizard, stack detection, scaffold |
 | `src/gea/templates/{es,en}/` | AGENTS.md, `.agents/`, docs, task templates |
-| `skills/gea-*` | Globally installable skills (init, plan, delegate, review) |
+| `src/gea/skills/gea-*` | Globally installable skills (init, plan, delegate, review) — packaged with the wheel so `gea skills sync` can install them from any machine, not just a repo checkout |
 | `tests/` | pytest — subprocess/herdr mocked, never touches the network or the real machine |
 
 ## Verification

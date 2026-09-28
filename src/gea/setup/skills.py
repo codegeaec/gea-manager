@@ -25,7 +25,7 @@ SKILLS_AGENT_IDS = {
     "opencode": "opencode",
 }
 
-GEA_SKILLS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "skills"
+GEA_SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills"
 
 
 def sync_third_party_skills(installed_agents: list[str]) -> list[str]:
