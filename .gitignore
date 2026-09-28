@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+dist/
+*.egg-info/
+gea.json
+.gea
+.codegraph/
+node_modules/
+.DS_Store
