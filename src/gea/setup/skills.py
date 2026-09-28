@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from gea import proc
+from gea import proc, ui
 
 # Third-party skills recommended by gea (see the plan's rationale for each).
 THIRD_PARTY_SKILLS = [
@@ -34,8 +34,9 @@ def sync_third_party_skills(installed_agents: list[str]) -> list[str]:
         return []
     synced = []
     for source in THIRD_PARTY_SKILLS:
+        ui.info(f"Syncing skill {source}…")
         cmd = ["npx", "skills", "add", "-g", source, "-a", *agent_ids]
-        _out, _err, code = proc.run(cmd, timeout=120)
+        code = proc.run_visible(cmd, timeout=120)
         if code == 0:
             synced.append(source)
     return synced
@@ -50,8 +51,9 @@ def sync_gea_skills(installed_agents: list[str]) -> list[str]:
     for skill_dir in sorted(GEA_SKILLS_DIR.iterdir()):
         if not skill_dir.is_dir():
             continue
+        ui.info(f"Syncing skill {skill_dir.name}…")
         cmd = ["npx", "skills", "add", "-g", str(skill_dir), "-a", *agent_ids]
-        _out, _err, code = proc.run(cmd, timeout=60)
+        code = proc.run_visible(cmd, timeout=60)
         if code == 0:
             synced.append(skill_dir.name)
     return synced

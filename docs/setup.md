@@ -43,3 +43,27 @@ Idempotent machine wizard, one step per concern:
 
 `gea update` re-runs the mise-tools, global-instructions and skills steps
 only — the ones that make sense to refresh without redoing the full wizard.
+
+## Visibility while it runs
+
+Every step prints a `[n/total]` header before it starts, so it's always
+clear which of the 13 steps is currently running — not just a wall of ✓
+lines with no sense of progress.
+
+Slow or network-bound commands (curl-piped installers, `npm install -g`,
+`mise use -g`, `rtk init`, `codegraph install`, `npx skills add`) run
+through `gea.proc.run_visible` instead of the usual captured `proc.run`:
+their real stdout/stderr stream straight to the terminal. This matters for
+two reasons — a long `npm install` shows its own progress instead of
+looking frozen, and if a tool needs to ask something interactively (a
+first-run confirmation), the prompt is actually visible and answerable
+instead of being silently captured while gea waits on a timeout. `rtk init
+-g` additionally passes `--auto-patch` (rtk's own non-interactive flag) so
+it doesn't need to prompt in the first place.
+
+A tool freshly installed via `mise use -g` is checked again right after
+install (`platform.refresh_mise_shims_on_path()` prepends mise's shims dir
+to this process's `PATH` first) — this is what stops `gea setup` from
+reporting a tool as both "installed" and "still missing" in the same run
+(mise's shims aren't on `PATH` until a shell re-sources its rc file, which
+a script invoked mid-run never does on its own).

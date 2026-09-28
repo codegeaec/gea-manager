@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from gea import platform, proc
+from gea import platform, proc, ui
 
 
 @dataclass(frozen=True)
@@ -66,7 +66,8 @@ def detected_agents() -> list[AgentCli]:
 def install_agent(agent: AgentCli) -> bool:
     if platform.which(agent.binary):
         return False
-    proc.run(agent.install_cmd, timeout=180)
+    ui.info(f"Installing {agent.id}…")
+    proc.run_visible(agent.install_cmd, timeout=180)
     return platform.which(agent.binary) is not None
 
 
@@ -75,7 +76,7 @@ def install_herdr_integrations(agents: list[AgentCli]) -> list[str]:
     one. Returns the targets attempted."""
     targets = [a.herdr_integration_target for a in agents if a.herdr_integration_target]
     for target in targets:
-        proc.run(["herdr", "integration", "install", target], timeout=60)
+        proc.run_visible(["herdr", "integration", "install", target], timeout=60)
     return targets
 
 
@@ -85,16 +86,24 @@ RTK_INSTALL_URL = "https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/maste
 def ensure_rtk() -> bool:
     if platform.which("rtk"):
         return False
-    proc.run(["bash", "-c", f"curl -fsSL {RTK_INSTALL_URL} | sh"], timeout=120)
+    ui.info("Installing rtk…")
+    proc.run_visible(["bash", "-c", f"curl -fsSL {RTK_INSTALL_URL} | sh"], timeout=120)
     return platform.which("rtk") is not None
 
 
 def rtk_init_for(agents: list[AgentCli]) -> None:
-    """Wire rtk's Bash-rewrite hook into every detected agent."""
-    proc.run(["rtk", "init", "-g"], timeout=60)
+    """Wire rtk's Bash-rewrite hook into every detected agent.
+
+    `--auto-patch` keeps this non-interactive (rtk's own flag for CI/CD —
+    see its README) so it can't sit waiting on a prompt the caller can't
+    see; `run_visible` means if it prints anything anyway, it's not hidden.
+    """
+    ui.info("Wiring rtk into detected agents…")
+    proc.run_visible(["rtk", "init", "-g", "--auto-patch"], timeout=60)
     for agent in agents:
         if agent.rtk_flag:
-            proc.run(["rtk", "init", "-g", *agent.rtk_flag.split()], timeout=60)
+            cmd = ["rtk", "init", "-g", "--auto-patch", *agent.rtk_flag.split()]
+            proc.run_visible(cmd, timeout=60)
 
 
 CODEGRAPH_INSTALL_URL = (
@@ -105,17 +114,20 @@ CODEGRAPH_INSTALL_URL = (
 def ensure_codegraph() -> bool:
     if platform.which("codegraph"):
         return False
-    proc.run(["bash", "-c", f"curl -fsSL {CODEGRAPH_INSTALL_URL} | sh"], timeout=120)
+    ui.info("Installing codegraph…")
+    proc.run_visible(["bash", "-c", f"curl -fsSL {CODEGRAPH_INSTALL_URL} | sh"], timeout=120)
     return platform.which("codegraph") is not None
 
 
 def codegraph_install_agents() -> None:
     """Wire the codegraph MCP server into every detected agent."""
-    proc.run(["codegraph", "install"], timeout=60)
+    ui.info("Wiring codegraph into detected agents…")
+    proc.run_visible(["codegraph", "install"], timeout=60)
 
 
 def ensure_shadcn_cli() -> bool:
     if platform.which("shadcn"):
         return False
-    proc.run(["npm", "install", "-g", "shadcn"], timeout=120)
+    ui.info("Installing shadcn CLI…")
+    proc.run_visible(["npm", "install", "-g", "shadcn"], timeout=120)
     return platform.which("shadcn") is not None

@@ -143,8 +143,28 @@ def _step_cleanup_legacy() -> None:
         ui.ok(action)
 
 
+# Ordered (label, step) pairs for the full run — printed as "[n/total]"
+# headers so the user always knows what's currently happening, even while
+# a slow/streaming installer step is quiet for a while.
+STEP_LABELS = [
+    "language",
+    "system packages",
+    "mise tools",
+    "node",
+    "herdr",
+    "agents",
+    "herdr integrations",
+    "rtk",
+    "codegraph",
+    "shadcn",
+    "global instructions",
+    "skills",
+    "legacy cleanup",
+]
+
+
 def run_setup(assume_yes: bool = False, only: str | None = None) -> int:
-    steps: dict[str, object] = {
+    only_steps: dict[str, object] = {
         "lang": lambda: _step_language(assume_yes),
         "system": _step_system_packages,
         "mise": _step_mise,
@@ -152,25 +172,43 @@ def run_setup(assume_yes: bool = False, only: str | None = None) -> int:
         "herdr": _step_herdr,
         "cleanup": _step_cleanup_legacy,
     }
-    if only and only not in steps:
-        ui.err(t("cli.unknown_command", command=only))
-        return 1
-
     if only:
-        if only in steps:
-            steps[only]()
+        if only not in only_steps:
+            ui.err(t("cli.unknown_command", command=only))
+            return 1
+        only_steps[only]()
         return 0
 
-    for name in ("lang", "system", "mise", "node", "herdr"):
-        steps[name]()
+    total = len(STEP_LABELS)
 
+    def header(n: int) -> None:
+        ui.info(f"[{n}/{total}] {STEP_LABELS[n - 1]}")
+
+    header(1)
+    _step_language(assume_yes)
+    header(2)
+    _step_system_packages()
+    header(3)
+    _step_mise()
+    header(4)
+    _step_node()
+    header(5)
+    _step_herdr()
+    header(6)
     installed_agents = _step_agents(assume_yes)
+    header(7)
     _step_herdr_integrations(installed_agents)
+    header(8)
     _step_rtk(installed_agents)
+    header(9)
     _step_codegraph()
+    header(10)
     _step_shadcn(assume_yes)
+    header(11)
     _step_global_instructions(installed_agents)
+    header(12)
     _step_skills_sync(installed_agents)
+    header(13)
     _step_cleanup_legacy()
 
     ui.ok("gea setup complete")
