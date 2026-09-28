@@ -16,7 +16,7 @@ import re
 from pathlib import Path
 
 from gea import config, proc, ui
-from gea.agents.herdr import CLI_ARGS, DEFAULT_CLI_ARGS, herdr_json
+from gea.agents.herdr import CLI_ARGS, DEFAULT_CLI_ARGS, herdr_json, prompt_pane
 
 
 def _find_repo_root(start: Path | None = None) -> Path:
@@ -68,18 +68,24 @@ def _create_tab(workspace_id: str, repo_root: Path, label: str) -> str | None:
     return result.get("root_pane", {}).get("pane_id")
 
 
-def _ensure_agent_tab(workspace_id: str, repo_root: Path, label: str, cli: str) -> None:
+def _ensure_agent_tab(workspace_id: str, repo_root: Path, label: str, cli: str) -> bool:
+    """Create the `<label>` tab and start `cli` in it if it doesn't exist
+    yet. Returns True only when this call actually created and started it
+    — callers use that to do first-time-only setup (e.g. picking a model),
+    never on a reopen of an already-running tab."""
     if _existing_tab_id(workspace_id, label):
-        return
+        return False
     pane_id = _create_tab(workspace_id, repo_root, label)
     if not pane_id:
         ui.warn(f"could not create tab '{label}'")
-        return
+        return False
     cli_cfg = CLI_ARGS.get(cli, DEFAULT_CLI_ARGS)
     start_args = ["agent", "start", label, "--kind", cli, "--pane", pane_id, "--"] + cli_cfg["base"]
     _result, err = herdr_json(start_args, timeout=65)
     if err:
         ui.warn(f"tab '{label}' created but agent failed to start ({err})")
+        return False
+    return True
 
 
 def _ensure_plain_tab(workspace_id: str, repo_root: Path, label: str) -> None:
@@ -100,8 +106,14 @@ def open_or_focus() -> int:
         ui.err("could not create or find the herdr workspace")
         return 1
 
-    _ensure_agent_tab(workspace_id, repo_root, primary, primary)
+    created = _ensure_agent_tab(workspace_id, repo_root, primary, primary)
     _ensure_plain_tab(workspace_id, repo_root, "terminal")
+
+    if created and primary == "claude":
+        model = cfg.get("primaryModel")
+        if model:
+            ui.ok(f"setting /model {model} in the claude tab")
+            prompt_pane(primary, f"/model {model}", wait=False)
 
     if os.environ.get("HERDR_ENV") == "1":
         herdr_json(["workspace", "focus", workspace_id])

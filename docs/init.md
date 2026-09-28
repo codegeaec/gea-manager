@@ -29,3 +29,11 @@ defaults to `ask`.
 `gea verify` (`src/gea/verify.py`) simply runs `gea.json["verify"]`'s
 commands one at a time via `bash -c`, printing ✓/✗ and the tail of a
 failing command's output.
+
+## Primary model (claude only)
+
+If the primary agent is Claude Code, `gea init` asks whether to
+automatically set `/model opusplan` the first time `gea` creates that
+project's claude tab (`gea.json`'s `primaryModel`, recommended default:
+yes). `gea` (see `docs/workspace.md`) only sends it on the tab's actual
+first creation — reopening an already-running tab never resends it.

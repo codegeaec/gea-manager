@@ -33,6 +33,19 @@ def _pick_primary_agent() -> str:
     return candidates[choice]
 
 
+def _pick_primary_model(primary: str) -> str | None:
+    """Only for Claude: gea can send "/model opusplan" to the claude tab
+    the first time it's created (see workspace.py), so the orchestrator
+    starts on the right model without the user typing it by hand on every
+    fresh project."""
+    if primary != "claude":
+        return None
+    question = "Automatically set /model opusplan in the claude tab? (recommended)"
+    if ui.ask_yes_no(question, default=True):
+        return "opusplan"
+    return None
+
+
 def _pick_tasks_location() -> str:
     choice = ui.ask_choice(
         "Where should tasks/subtasks live?",
@@ -62,6 +75,7 @@ def run_init() -> int:
 
     project_name = repo_root.name
     primary = _pick_primary_agent()
+    primary_model = _pick_primary_model(primary)
     tasks_location = _pick_tasks_location()
     commit_lang, docs_lang = _pick_lang()
 
@@ -88,6 +102,7 @@ def run_init() -> int:
         {
             "name": project_name,
             "primary": primary,
+            "primaryModel": primary_model,
             "tasks": {"location": tasks_location},
             "verify": verify_commands,
             "builders": {"mode": "ask", "allow": allow, "ponytail": True},

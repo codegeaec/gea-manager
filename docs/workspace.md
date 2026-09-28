@@ -13,3 +13,12 @@ opencode-roles logic, which doesn't belong in a general-purpose tool.
   process to attach to the session, after the tabs are set up.
 - Already inside herdr (`HERDR_ENV=1`): just focuses the workspace instead
   of re-executing — a pane can't exec its way out from under itself.
+
+## First-time model selection (claude only)
+
+`_ensure_agent_tab` reports whether it actually created and started the
+tab, as opposed to finding one already running. Only on that first
+creation, if the primary agent is `claude` and `gea.json`'s `primaryModel`
+is set (asked by `gea init`, see `docs/init.md`), `gea` sends `/model
+<value>` to that pane (`herdr agent prompt <label> "/model <value>"`, not
+waited on). Reopening the workspace later never resends it.

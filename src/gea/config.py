@@ -21,6 +21,10 @@ DEFAULT_GLOBAL_CONFIG: dict[str, Any] = {
 DEFAULT_PROJECT_CONFIG: dict[str, Any] = {
     "name": None,
     "primary": None,
+    # Only meaningful when primary == "claude": sent as "/model <value>" to
+    # the claude tab the first time gea creates it (see workspace.py). None
+    # means don't set a model automatically.
+    "primaryModel": None,
     "tasks": {"location": "home"},
     "verify": [],
     "builders": {"mode": "ask", "allow": [], "ponytail": True},
