@@ -16,6 +16,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/gea"]
+artifacts = ["src/gea/i18n/*.json", "src/gea/templates/**/*"]
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.6"]
