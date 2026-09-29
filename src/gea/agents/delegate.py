@@ -6,10 +6,11 @@ pattern — a plain CLI has no harness to resume it later.
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 from gea import autonomy, checkpoint, config, ui
-from gea.agents import herdr, profiles, state
+from gea.agents import herdr, log, profiles, state
 from gea.tasks.store import find_task_path
 
 # Fixed instructions first, variable parts (task, autonomy) last: the stable
@@ -54,9 +55,26 @@ def delegate_task(task_id: str, agent_id: str | None = None) -> int:
     if checkpoint.create(task_id):
         ui.info(f"checkpoint saved — `gea undo {task_id}` restores it")
     ui.info(f"delegating {task_id} to {agent.id} ({agent.cli})")
+    started = time.monotonic()
+    attempt = len(log.read(task_id=task_id)) + 1
+
+    def record(result: str) -> None:
+        log.append(
+            {
+                "project": Path.cwd().name,
+                "task_id": task_id,
+                "agent_id": agent.id,
+                "pool": agent.pool,
+                "result": result,
+                "duration_s": round(time.monotonic() - started),
+                "round": attempt,
+            }
+        )
+
     status = herdr.start_builder_pane(agent.id, agent.cli, agent.model, Path.cwd())
     print(status)
     if status.startswith("BLOCKED") or "FAILED" in status or "!=" in status:
+        record("blocked" if status.startswith("BLOCKED") else "error")
         return 1
 
     pane_name = f"builder-{agent.id}"
@@ -68,4 +86,5 @@ def delegate_task(task_id: str, agent_id: str | None = None) -> int:
     )
     out, code = herdr.prompt_pane(pane_name, prompt, wait=True)
     print(out)
+    record("done" if code == 0 else "error")
     return 0 if code == 0 else 1

@@ -28,6 +28,10 @@ def global_state_path() -> Path:
     return gea_home() / "state.json"
 
 
+def delegations_log_path() -> Path:
+    return gea_home() / "delegations.jsonl"
+
+
 def projects_root() -> Path:
     return gea_home() / "projects"
 
