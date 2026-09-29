@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from gea import paths
+from gea import dryrun, manifest, paths
 
 START_MARKER = "<!-- gea:start -->"
 END_MARKER = "<!-- gea:end -->"
@@ -79,6 +79,9 @@ def apply_to_file(path: Path) -> bool:
     (and parent dirs) if it doesn't exist. Returns True if the file was
     changed."""
     block = render_block()
+    if dryrun.active():
+        dryrun.report(f"update the gea block in {path}")
+        return True
     if not path.exists():
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(block, encoding="utf-8")
@@ -99,6 +102,23 @@ def apply_to_file(path: Path) -> bool:
     return True
 
 
+def remove_from_file(path: Path) -> bool:
+    """Strip the managed block from `path`. Returns True if it changed."""
+    if not path.exists():
+        return False
+    original = path.read_text(encoding="utf-8")
+    if START_MARKER not in original or END_MARKER not in original:
+        return False
+    before, rest = original.split(START_MARKER, 1)
+    _block, after = rest.split(END_MARKER, 1)
+    remaining = (before.rstrip("\n") + "\n" + after.lstrip("\n")).strip("\n")
+    if dryrun.active():
+        dryrun.report(f"remove the gea block from {path}")
+        return True
+    path.write_text(remaining + "\n" if remaining else "", encoding="utf-8")
+    return True
+
+
 def apply_for_installed_agents(installed_agents: list[str]) -> list[str]:
     """Apply the block to every target whose agent is in `installed_agents`.
 
@@ -111,4 +131,5 @@ def apply_for_installed_agents(installed_agents: list[str]) -> list[str]:
         path = _target_path(agent)
         if apply_to_file(path):
             changed.append(str(path))
+            manifest.record(manifest.KIND_INSTRUCTIONS, str(path))
     return changed

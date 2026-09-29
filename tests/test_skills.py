@@ -22,7 +22,7 @@ def test_sync_third_party_skills_uses_mapped_agent_ids(monkeypatch):
         skills.proc, "run_visible", lambda cmd, timeout=30: calls.append(cmd) or 0
     )
     synced = skills.sync_third_party_skills(["claude", "codex", "unknown-agent"])
-    assert synced == skills.THIRD_PARTY_SKILLS
+    assert synced == skills.THIRD_PARTY_SKILLS + list(skills.OPTIONAL_SKILLS.values())
     assert all("-a" in cmd and "claude-code" in cmd and "codex" in cmd for cmd in calls)
 
 

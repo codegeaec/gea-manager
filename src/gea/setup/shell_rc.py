@@ -14,7 +14,7 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-from gea import paths
+from gea import dryrun, paths
 
 OLD_MARKER = '# herdr: al invocar "herdr" sin argumentos'
 OLD_HERDR_REPO = paths.local_bin() / "herdr-repo"
@@ -39,6 +39,9 @@ def remove_legacy_snippet(rc_path: Path) -> bool:
     """
     if not find_legacy_snippet(rc_path):
         return False
+    if dryrun.active():
+        dryrun.report(f"remove the legacy herdr() block from {rc_path} (with backup)")
+        return True
 
     backup = rc_path.with_suffix(rc_path.suffix + f".bak.{_backup_suffix()}")
     shutil.copy2(rc_path, backup)
@@ -70,6 +73,9 @@ def remove_legacy_snippet(rc_path: Path) -> bool:
 
 def remove_legacy_herdr_repo() -> bool:
     if OLD_HERDR_REPO.exists():
+        if dryrun.active():
+            dryrun.report(f"remove {OLD_HERDR_REPO} (with backup)")
+            return True
         backup = OLD_HERDR_REPO.with_name(OLD_HERDR_REPO.name + f".bak.{_backup_suffix()}")
         shutil.copy2(OLD_HERDR_REPO, backup)
         OLD_HERDR_REPO.unlink()

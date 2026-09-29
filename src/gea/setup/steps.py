@@ -5,7 +5,7 @@ recommended default.
 
 from __future__ import annotations
 
-from gea import config, platform, ui
+from gea import config, dryrun, platform, ui
 from gea.i18n import t
 from gea.setup import agents_install, global_instructions, shadcn_setup, shell_rc, skills, tools
 
@@ -98,6 +98,9 @@ def _step_herdr_integrations(installed_agents: list[agents_install.AgentCli]) ->
 
 
 def _step_rtk(installed_agents: list[agents_install.AgentCli]) -> None:
+    if not config.load_global().get("optional", {}).get("rtk", True):
+        ui.ok("rtk: skipped (opted out)")
+        return
     if agents_install.ensure_rtk():
         ui.ok("rtk installed")
     else:
@@ -143,35 +146,39 @@ def _step_cleanup_legacy() -> None:
         ui.ok(action)
 
 
-# Ordered (label, step) pairs for the full run — printed as "[n/total]"
-# headers so the user always knows what's currently happening, even while
-# a slow/streaming installer step is quiet for a while.
-STEP_LABELS = [
-    "language",
-    "system packages",
-    "mise tools",
-    "node",
-    "herdr",
-    "agents",
-    "herdr integrations",
-    "rtk",
-    "codegraph",
-    "shadcn",
-    "global instructions",
-    "skills",
-    "legacy cleanup",
-]
+def _step_optional(assume_yes: bool) -> None:
+    """Ask which optional pieces to install; the answers persist in
+    ~/gea/config.json["optional"] so `gea update`/`skills sync` honor them."""
+    cfg = config.load_global()
+    optional = cfg.setdefault("optional", {})
+    questions = {
+        "ponytail": "Install the ponytail skill (minimal-code discipline)?",
+        "rtk": "Install rtk (token-saving command output proxy)?",
+    }
+    for name, question in questions.items():
+        current = optional.get(name, True)
+        optional[name] = current if assume_yes else ui.ask_yes_no(question, default=current)
+        ui.ok(f"{name}: {'on' if optional[name] else 'off'}")
+    config.save_global(cfg)
 
 
-def run_setup(assume_yes: bool = False, only: str | None = None) -> int:
-    only_steps: dict[str, object] = {
+def _only_steps(assume_yes: bool) -> dict[str, object]:
+    return {
         "lang": lambda: _step_language(assume_yes),
+        "optional": lambda: _step_optional(assume_yes),
         "system": _step_system_packages,
         "mise": _step_mise,
         "node": _step_node,
         "herdr": _step_herdr,
         "cleanup": _step_cleanup_legacy,
     }
+
+
+def run_setup(assume_yes: bool = False, only: str | None = None, dry_run: bool = False) -> int:
+    dryrun.enable(dry_run)
+    if dry_run:
+        ui.info("dry-run: nothing will be installed or written")
+    only_steps = _only_steps(assume_yes)
     if only:
         if only not in only_steps:
             ui.err(t("cli.unknown_command", command=only))
@@ -179,37 +186,33 @@ def run_setup(assume_yes: bool = False, only: str | None = None) -> int:
         only_steps[only]()
         return 0
 
-    total = len(STEP_LABELS)
+    agents_found: list[agents_install.AgentCli] = []
 
-    def header(n: int) -> None:
-        ui.info(f"[{n}/{total}] {STEP_LABELS[n - 1]}")
+    def _agents() -> None:
+        agents_found.extend(_step_agents(assume_yes))
 
-    header(1)
-    _step_language(assume_yes)
-    header(2)
-    _step_system_packages()
-    header(3)
-    _step_mise()
-    header(4)
-    _step_node()
-    header(5)
-    _step_herdr()
-    header(6)
-    installed_agents = _step_agents(assume_yes)
-    header(7)
-    _step_herdr_integrations(installed_agents)
-    header(8)
-    _step_rtk(installed_agents)
-    header(9)
-    _step_codegraph()
-    header(10)
-    _step_shadcn(assume_yes)
-    header(11)
-    _step_global_instructions(installed_agents)
-    header(12)
-    _step_skills_sync(installed_agents)
-    header(13)
-    _step_cleanup_legacy()
+    # Ordered (label, step) pairs — printed as "[n/total]" headers so the
+    # user always knows what's currently happening, even while a
+    # slow/streaming installer step is quiet for a while.
+    steps = [
+        ("language", lambda: _step_language(assume_yes)),
+        ("optional tools", lambda: _step_optional(assume_yes)),
+        ("system packages", _step_system_packages),
+        ("mise tools", _step_mise),
+        ("node", _step_node),
+        ("herdr", _step_herdr),
+        ("agents", _agents),
+        ("herdr integrations", lambda: _step_herdr_integrations(agents_found)),
+        ("rtk", lambda: _step_rtk(agents_found)),
+        ("codegraph", _step_codegraph),
+        ("shadcn", lambda: _step_shadcn(assume_yes)),
+        ("global instructions", lambda: _step_global_instructions(agents_found)),
+        ("skills", lambda: _step_skills_sync(agents_found)),
+        ("legacy cleanup", _step_cleanup_legacy),
+    ]
+    for n, (label, step) in enumerate(steps, start=1):
+        ui.info(f"[{n}/{len(steps)}] {label}")
+        step()
 
     ui.ok("gea setup complete")
     return 0
