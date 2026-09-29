@@ -8,7 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from gea import config, dryrun, platform, proc, secrets, ui
-from gea.agents.profiles import load_profiles
+from gea.agents.profiles import load_profiles, refresh_and_save
 from gea.i18n import t
 from gea.init import detect, scaffold
 from gea.tasks import store
@@ -111,7 +111,7 @@ def run_init(dry_run: bool = False) -> int:
         if not ui.ask_yes_no("Use these?", default=True):
             verify_commands = []
 
-    all_profiles = load_profiles()
+    all_profiles = load_profiles() or refresh_and_save()
     allow = [p.id for p in all_profiles] if all_profiles else []
 
     cfg = config.DEFAULT_PROJECT_CONFIG.copy()

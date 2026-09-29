@@ -74,6 +74,16 @@ def cmd_reset(agent_id: str) -> int:
     return 0
 
 
+def cmd_refresh() -> int:
+    """Detect the builder CLIs installed here and store their profiles."""
+    detected = profiles.refresh_and_save()
+    for p in detected:
+        print(f"{p.id} {p.cli} {p.model or '-'} pool={p.pool}")
+    if not detected:
+        print("no builder CLIs found (opencode, agy, codex, kimi)")
+    return 0
+
+
 def cmd_mode(value: str) -> int:
     cfg = config.load_project(Path.cwd())
     cfg.setdefault("builders", {})["mode"] = value
@@ -96,9 +106,11 @@ def dispatch_agents(args) -> int:
         return cmd_reset(args.agent_id)
     if command == "mode":
         return cmd_mode(args.value)
+    if command == "refresh":
+        return cmd_refresh()
     if command == "stats":
         from gea.agents.stats import run_stats
 
         return run_stats()
-    print("usage: gea agents [list|available|start|check|reset|mode|stats]")
+    print("usage: gea agents [list|available|start|check|reset|mode|refresh|stats]")
     return 1

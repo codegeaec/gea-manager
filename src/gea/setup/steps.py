@@ -6,6 +6,7 @@ recommended default.
 from __future__ import annotations
 
 from gea import config, dryrun, platform, ui
+from gea.agents import profiles
 from gea.i18n import t
 from gea.setup import agents_install, global_instructions, shadcn_setup, shell_rc, skills, tools
 
@@ -127,6 +128,11 @@ def _step_shadcn(assume_yes: bool) -> None:
     shadcn_setup.review_mcp_servers(assume_yes=assume_yes)
 
 
+def _step_agent_profiles() -> None:
+    detected = profiles.refresh_and_save()
+    ui.ok(f"builder profiles: {', '.join(p.id for p in detected) or 'none detected'}")
+
+
 def _step_global_instructions(installed_agents: list[agents_install.AgentCli]) -> None:
     changed = global_instructions.apply_for_installed_agents([a.id for a in installed_agents])
     for path in changed:
@@ -203,6 +209,7 @@ def run_setup(assume_yes: bool = False, only: str | None = None, dry_run: bool =
         ("herdr", _step_herdr),
         ("agents", _agents),
         ("herdr integrations", lambda: _step_herdr_integrations(agents_found)),
+        ("builder profiles", _step_agent_profiles),
         ("rtk", lambda: _step_rtk(agents_found)),
         ("codegraph", _step_codegraph),
         ("shadcn", lambda: _step_shadcn(assume_yes)),
