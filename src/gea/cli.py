@@ -82,6 +82,8 @@ def _build_parser() -> argparse.ArgumentParser:
     handoff_parser.add_argument("--to", choices=["claude", "codex", "opencode", "agy", "kimi"])
     handoff_parser.add_argument("--yes", action="store_true", help="skip the primary-agent prompt")
 
+    subparsers.add_parser("status", help="active tasks, gea panes and exhausted pools")
+
     subparsers.add_parser("scan-secrets", help="scan staged changes for secrets (pre-commit)")
     lint_parser = subparsers.add_parser(
         "lint", help="check the size of AGENTS.md/CLAUDE.md/skills context"
@@ -195,6 +197,11 @@ def _main(argv: list[str] | None = None) -> int:
         from gea.verify import run_verify
 
         return run_verify(task_id=args.task, quiet=args.quiet)
+
+    if args.command == "status":
+        from gea.status import run_status
+
+        return run_status()
 
     if args.command == "handoff":
         from gea.handoff import run_handoff

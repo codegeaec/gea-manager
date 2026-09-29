@@ -90,5 +90,9 @@
   "worktree.removed": "worktree de {task_id} quitado",
   "worktree.remove_failed": "no se pudo quitar el worktree en {path}",
   "stats.empty": "todavía no hay delegaciones registradas",
-  "stats.header": "agente         tier intentos     éxito   media  timeouts"
+  "stats.header": "agente         tier intentos     éxito   media  timeouts",
+  "status.tasks": "tasks activas",
+  "status.panes": "panes de gea en herdr",
+  "status.exhausted": "pools agotados (hasta)",
+  "status.none": "(ninguno)"
 }

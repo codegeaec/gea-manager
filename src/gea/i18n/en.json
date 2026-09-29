@@ -90,5 +90,9 @@
   "worktree.removed": "worktree of {task_id} removed",
   "worktree.remove_failed": "could not remove the worktree at {path}",
   "stats.empty": "no delegations logged yet",
-  "stats.header": "agent          tier attempts  success     avg  timeouts"
+  "stats.header": "agent          tier attempts  success     avg  timeouts",
+  "status.tasks": "active tasks",
+  "status.panes": "gea panes in herdr",
+  "status.exhausted": "exhausted pools (until)",
+  "status.none": "(none)"
 }
