@@ -174,3 +174,12 @@ def prompt_result(
         except (json.JSONDecodeError, AttributeError):
             error = "unknown_error"
     return out, code, error
+
+
+def notify(title: str, body: str = "", sound: str = "done") -> bool:
+    """Show a herdr notification (best effort — never raises or blocks)."""
+    cmd = ["herdr", "notification", "show", title, "--sound", sound]
+    if body:
+        cmd += ["--body", body]
+    _out, _err, code = proc.run(cmd, timeout=10)
+    return code == 0

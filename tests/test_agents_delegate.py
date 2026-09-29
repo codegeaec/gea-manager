@@ -48,6 +48,9 @@ def test_delegate_task_no_agent_available(tmp_path, monkeypatch, capsys):
     assert code == 1
 
 
+notified: list = []
+
+
 def _delegate_with_fakes(tmp_path, monkeypatch, start_status, prompt_result):
     from gea.tasks import store
 
@@ -55,6 +58,7 @@ def _delegate_with_fakes(tmp_path, monkeypatch, start_status, prompt_result):
     monkeypatch.chdir(repo)
     store.create_task("Something", repo_root=repo)
     monkeypatch.setattr(delegate.checkpoint, "create", lambda *_: False)
+    monkeypatch.setattr(delegate.herdr, "notify", lambda *a, **k: notified.append(a))
     monkeypatch.setattr(delegate.herdr, "start_builder_pane", lambda *a: start_status)
     monkeypatch.setattr(delegate.herdr, "prompt_result", lambda *a, **k: prompt_result)
     monkeypatch.setattr(delegate.herdr, "read_pane", lambda *a, **k: "last words")
@@ -86,3 +90,9 @@ def test_delegate_timeout_is_logged_and_noted_in_the_task(tmp_path, monkeypatch)
     assert log.last_for_task("TASK-001")["result"] == "timeout"
     notes = store.find_task_path("TASK-001", tmp_path / "repo").read_text(encoding="utf-8")
     assert "last words" in notes and "budget" in notes
+
+
+def test_delegate_notifies_when_the_builder_finishes(tmp_path, monkeypatch):
+    notified.clear()
+    _delegate_with_fakes(tmp_path, monkeypatch, "started builder-codex", ("ok", 0, None))
+    assert notified and notified[0][0] == "TASK-001: done"

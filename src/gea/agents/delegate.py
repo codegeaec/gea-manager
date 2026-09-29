@@ -72,6 +72,11 @@ def delegate_task(task_id: str, agent_id: str | None = None) -> int:
                 "round": attempt,
             }
         )
+        herdr.notify(
+            f"{task_id}: {result}",
+            f"{agent.id} finished in {round(time.monotonic() - started)}s",
+            sound="done" if result == "done" else "request",
+        )
 
     status = herdr.start_builder_pane(agent.id, agent.cli, agent.model, Path.cwd())
     print(status)
