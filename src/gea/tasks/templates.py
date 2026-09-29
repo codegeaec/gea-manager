@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 TASK_TEMPLATE = {
     "en": """# {task_id} - {title}
 
@@ -15,6 +17,10 @@ Updated: {date}
 ## Context
 
 ## Requirements
+
+## Acceptance
+
+- [ ] 
 
 ## Existing Implementation
 
@@ -52,6 +58,10 @@ Updated: {date}
 ## Context
 
 ## Requirements
+
+## Acceptance
+
+- [ ] 
 
 ## Existing Implementation
 
@@ -151,8 +161,26 @@ Updated: {date}
 }
 
 
-def render_task(task_id: str, title: str, date: str, lang: str = "en") -> str:
-    template = TASK_TEMPLATE.get(lang, TASK_TEMPLATE["en"])
+TASK_TYPES = ("bugfix", "feature", "refactor", "spike")
+TEMPLATES_ROOT = Path(__file__).resolve().parent.parent / "templates"
+
+
+def _type_template(task_type: str, lang: str) -> str:
+    path = TEMPLATES_ROOT / lang / "tasks" / f"{task_type}.md"
+    if not path.exists():
+        path = TEMPLATES_ROOT / "en" / "tasks" / f"{task_type}.md"
+    return path.read_text(encoding="utf-8")
+
+
+def render_task(
+    task_id: str, title: str, date: str, lang: str = "en", task_type: str | None = None
+) -> str:
+    if task_type:
+        if task_type not in TASK_TYPES:
+            raise ValueError(f"unknown task type: {task_type} (use {', '.join(TASK_TYPES)})")
+        template = _type_template(task_type, lang)
+    else:
+        template = TASK_TEMPLATE.get(lang, TASK_TEMPLATE["en"])
     return template.format(task_id=task_id, title=title, date=date)
 
 

@@ -15,7 +15,7 @@ from datetime import date as date_cls
 from pathlib import Path
 
 from gea import config, paths
-from gea.tasks import templates
+from gea.tasks import decisions, templates
 
 TASK_ID_RE = re.compile(r"TASK-(\d+)(?:\.(\d+))?")
 
@@ -78,7 +78,9 @@ def _docs_lang(repo_root: Path | None = None) -> str:
     return cfg.get("lang", {}).get("docs", "en")
 
 
-def create_task(title: str, repo_root: Path | None = None) -> Path:
+def create_task(
+    title: str, repo_root: Path | None = None, task_type: str | None = None
+) -> Path:
     repo_root = repo_root or Path.cwd()
     number = next_task_number(repo_root)
     task_id = f"TASK-{number:03d}"
@@ -87,7 +89,11 @@ def create_task(title: str, repo_root: Path | None = None) -> Path:
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / f"{task_id}-{slug}.md"
     content = templates.render_task(
-        task_id, title, date_cls.today().isoformat(), lang=_docs_lang(repo_root)
+        task_id,
+        title,
+        date_cls.today().isoformat(),
+        lang=_docs_lang(repo_root),
+        task_type=task_type,
     )
     path.write_text(content, encoding="utf-8")
     write_index(repo_root)
@@ -170,6 +176,7 @@ def close_task(task_id: str, repo_root: Path | None = None) -> bool:
     path = find_task_path(task_id, repo_root)
     if path is None:
         return False
+    decisions.archive(path, task_id, repo_root or Path.cwd())
     done_dir = path.parent / "done"
     done_dir.mkdir(parents=True, exist_ok=True)
     path.rename(done_dir / path.name)

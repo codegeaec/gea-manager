@@ -8,7 +8,11 @@ from gea.tasks import store
 def dispatch_task(args) -> int:
     command = args.task_command
     if command == "new":
-        path = store.create_task(args.title)
+        try:
+            path = store.create_task(args.title, task_type=args.type)
+        except ValueError as exc:
+            print(exc)
+            return 1
         print(path)
         return 0
     if command == "list":
