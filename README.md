@@ -40,6 +40,14 @@ gea verify --task TASK-001            # verify del proyecto + criterios de acept
 gea delegate TASK-001                 # toma un checkpoint de git y delega al builder
 gea undo TASK-001                     # vuelve al checkpoint previo a delegar
 gea task done TASK-001                # cierra; su ## Decisions pasa a docs/decisions.md
+gea delegate TASK-001 --worktree      # el builder trabaja en su propio git worktree
+gea review-pack TASK-001              # task + diff + verify en un solo archivo
+gea review TASK-001                   # revisa un modelo distinto al que implementó
+gea task new --from-issue 42          # arranca la task desde un issue de GitHub
+gea pr TASK-001                       # abre el PR desde la task (pide confirmación)
+gea status                            # tasks activas, panes y pools agotados
+gea agents stats                      # éxito y duración por agente y tier
+gea handoff --to codex                # cambia de orquestador con un prompt de retoma
 ```
 
 ### Seguridad y mantenimiento
@@ -48,6 +56,7 @@ gea task done TASK-001                # cierra; su ## Decisions pasa a docs/deci
 gea scan-secrets   # escanea el diff staged; `gea init` lo instala como hook pre-commit
 gea lint           # avisa si AGENTS.md, CLAUDE.md o una skill pesan demasiado
 gea uninstall      # revierte lo que setup registró (con backup y confirmación)
+gea skills prune   # ofrece quitar skills que gea no instaló (cada una cuesta tokens)
 ```
 
 Cada proyecto puede fijar el nivel de autonomía del builder en `gea.json`

@@ -9,6 +9,7 @@ from pathlib import Path
 
 from gea import config, dryrun, platform, proc, secrets, ui
 from gea.agents.profiles import load_profiles
+from gea.i18n import t
 from gea.init import detect, scaffold
 from gea.tasks import store
 
@@ -198,6 +199,7 @@ def run_init(dry_run: bool = False) -> int:
             proc.run(["codegraph", "init"], timeout=60)
             ui.ok("codegraph initialized")
 
+    ui.info(t("init.builders_hint"))
     ui.ok("gea init complete")
     return 0
 

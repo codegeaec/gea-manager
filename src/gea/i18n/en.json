@@ -98,5 +98,6 @@
   "task.title_required": "give a title or use --from-issue",
   "task.issue_failed": "could not read issue #{number}: {error}",
   "pr.confirm": "Create this pull request on GitHub?",
-  "pr.failed": "`gh pr create` failed"
+  "pr.failed": "`gh pr create` failed",
+  "init.builders_hint": "Builders are tried cheapest-first (priority order). Mark delicate tasks `Tier: L`, or pin agents per tier with builders.tiers in gea.json."
 }

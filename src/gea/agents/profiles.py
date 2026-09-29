@@ -15,6 +15,8 @@ from pathlib import Path
 from gea import config, platform, proc
 from gea.agents import log, state
 
+# Profiles are listed cheapest-first: with no history, delegation follows
+# `priority` (see pick_agent / rank_for_tier).
 # Known cloud profiles behind a single CLI — mirrors what a real install
 # would report via `opencode models`, kept as a static fallback so
 # detection still works offline/in tests.

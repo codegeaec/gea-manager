@@ -80,3 +80,77 @@ distinct from "no session".
 agy has one pool per model family (`agy-gemini`, `agy-claude`,
 `agy-gpt-oss`), filtered by what `agy models` lists. agy exposes no quota
 command, so exhaustion is detected from pane output like the other CLIs.
+
+# Delegation, review and hand-off pass
+
+## Delegation log
+
+Every builder attempt (and review/handoff) appends one JSON line to
+`~/gea/delegations.jsonl` (`src/gea/agents/log.py`): agent, pool, tier,
+result (`done|blocked|timeout|error`), duration, `verify_ok`, files outside
+scope, worktree. `gea agents stats` summarizes it; tier routing reads it.
+
+## Budget, notification, scope
+
+- `Budget: 45m` in a task header (default `builders.budget_minutes`, 30) is
+  passed to `herdr agent prompt --wait --timeout`. On timeout gea appends the
+  pane's last output to *Implementation Notes*, logs `timeout` and leaves the
+  pane running.
+- `herdr notification show` fires when a builder finishes.
+- The paths in backticks under `## Files` are the task's scope. After a run
+  gea warns (and writes into `## Review`) about anything else that changed;
+  `docs/` and `.gea/` are always allowed. `gea delegate` also warns when
+  `## Files` or `## Acceptance` are empty.
+- `gea delegate` prints a ~5-line summary instead of the builder's terminal.
+
+## Review
+
+- `gea review-pack <ID>` → `<task root>/review/<ID>.md` (task, diff capped at
+  150 lines per file, verify results, scope warnings).
+- `gea review <ID>` picks an available agent from a *different pool* than the
+  task's last builder and asks it to write findings into `## Review`.
+
+## Routing
+
+`Tier: S|M|L` in the task header. Without history the priority order rules.
+Agents with ≥5 logged builds in a tier are ranked by verified success rate;
+`builders.tiers` in gea.json (`{"L": ["codex"]}`) restricts and orders outright.
+
+## Hand-off between orchestrators
+
+`gea handoff [--to claude|codex|opencode|agy|kimi]` writes
+`<task root>/HANDOFF.md` from what is in flight (in-progress/review tasks,
+last delegation each, git state, pending checkpoints, exhausted pools).
+`--to` starts the new orchestrator in a herdr pane (`orchestrator-<cli>`),
+sends it "read HANDOFF.md", and offers to update `gea.json["primary"]`.
+Instructions are portable: every CLI reads `AGENTS.md`; the orchestrator role
+lives in `.agents/orchestrator.md`, which `CLAUDE.md` imports.
+
+## Team mode
+
+`gea.json` is committed project policy; `gea.local.json` (gitignored) holds
+personal keys (`primary`, `primaryModel`, `builders.allow`, `builders.mode`)
+and wins on load with a deep merge. `save_project` splits them again.
+`gea init` offers to stop ignoring an old gitignored `gea.json` (backup kept).
+
+## Worktrees
+
+`gea delegate --worktree` (or `builders.worktrees: true`) uses
+`herdr worktree create` at `~/gea/worktrees/<repo>/<task>` on branch
+`gea/<task>`, copies `gea.json`/`gea.local.json` in, runs the builder there,
+verifies there, and commits its output on the branch. No checkpoint is taken
+(the worktree is the isolation). A worktree created for a run that fails to
+start is removed; `gea task done` offers to remove the task's worktree (the
+branch is kept). gea never removes a worktree it did not create.
+
+## Token savers
+
+`gea verify --quiet`, compact `delegate` summary, `review-pack`, fresh builder
+session when the task changes (`/clear` or `/new` for claude/codex/opencode),
+`gea skills prune`, `gea lint --strict` in the pre-commit hook, and
+self-sufficient tasks (`## Files` + `## Acceptance`, filled with codegraph).
+
+## Extras
+
+`gea status`, `gea task new --from-issue N` (uses `gh issue view`),
+`gea pr <ID>` (generated body, confirmation first, no tool signature).
