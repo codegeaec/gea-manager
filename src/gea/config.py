@@ -10,15 +10,30 @@ import json
 from pathlib import Path
 from typing import Any
 
-from gea import paths
+from gea import dryrun, paths
+
+# Bumped whenever a file's shape changes incompatibly. There are no
+# migrations yet: a file written by a *newer* gea is refused on load
+# instead of being silently misread (or clobbered on the next save).
+SCHEMA_VERSION = 1
+
+AUTONOMY_LEVELS = ("supervised", "balanced", "autonomous")
+DEFAULT_AUTONOMY = "balanced"
+
+
+class ConfigError(Exception):
+    """A config file is unusable (newer schema, wrong type, bad value)."""
+
 
 DEFAULT_GLOBAL_CONFIG: dict[str, Any] = {
+    "schema_version": SCHEMA_VERSION,
     "ui_lang": "es",
     "primary_agent": None,
     "builders": {"mode": "ask"},
 }
 
 DEFAULT_PROJECT_CONFIG: dict[str, Any] = {
+    "schema_version": SCHEMA_VERSION,
     "name": None,
     "primary": None,
     # Only meaningful when primary == "claude": sent as "/model <value>" to
@@ -30,7 +45,23 @@ DEFAULT_PROJECT_CONFIG: dict[str, Any] = {
     "builders": {"mode": "ask", "allow": [], "ponytail": True},
     "lang": {"commits": "es", "docs": "es"},
     "pm": None,
+    # How much freedom a builder gets (see AUTONOMY_LEVELS and autonomy.py).
+    "autonomy": DEFAULT_AUTONOMY,
 }
+
+
+def validate(data: dict[str, Any], path: Path) -> None:
+    version = data.get("schema_version")
+    if isinstance(version, bool) or not isinstance(version, int) or version < 1:
+        raise ConfigError(f"{path}: invalid schema_version {version!r}")
+    if version > SCHEMA_VERSION:
+        raise ConfigError(
+            f"{path}: schema_version {version} is newer than this gea supports "
+            f"({SCHEMA_VERSION}) — upgrade gea"
+        )
+    autonomy = data.get("autonomy", DEFAULT_AUTONOMY)
+    if autonomy not in AUTONOMY_LEVELS:
+        raise ConfigError(f"{path}: autonomy must be one of {', '.join(AUTONOMY_LEVELS)}")
 
 
 def _read_json(path: Path, default: dict[str, Any]) -> dict[str, Any]:
@@ -40,12 +71,18 @@ def _read_json(path: Path, default: dict[str, Any]) -> dict[str, Any]:
         data = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
         return dict(default)
+    if not isinstance(data, dict):
+        raise ConfigError(f"{path}: expected a JSON object")
     merged = dict(default)
     merged.update(data)
+    validate(merged, path)
     return merged
 
 
 def _write_json(path: Path, data: dict[str, Any]) -> None:
+    if dryrun.active():
+        dryrun.report(f"write {path}")
+        return
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 

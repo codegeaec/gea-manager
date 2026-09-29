@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import subprocess
 
+from gea import dryrun
+
 
 def run(cmd: list[str], timeout: int = 30) -> tuple[str, str, int]:
     """Run `cmd`, returning (stdout, stderr, returncode).
@@ -36,6 +38,9 @@ def run_visible(cmd: list[str], timeout: int | None = None) -> int:
     child process is just waiting on stdin. This lets the user see (and
     answer) whatever the child prints.
     """
+    if dryrun.active():
+        dryrun.report(f"run: {' '.join(cmd)}")
+        return 0
     try:
         completed = subprocess.run(cmd, timeout=timeout, check=False)
         return completed.returncode
