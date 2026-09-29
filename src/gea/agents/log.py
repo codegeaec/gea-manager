@@ -45,3 +45,8 @@ def read(**filters: Any) -> list[dict[str, Any]]:
 def last_for_task(task_id: str, **filters: Any) -> dict[str, Any] | None:
     entries = read(task_id=task_id, **filters)
     return entries[-1] if entries else None
+
+
+def last_build_for_agent(agent_id: str) -> dict[str, Any] | None:
+    builds = [e for e in read(agent_id=agent_id) if e.get("kind", "build") == "build"]
+    return builds[-1] if builds else None

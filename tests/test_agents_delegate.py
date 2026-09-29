@@ -5,7 +5,7 @@ from gea.agents import delegate
 
 def _seed(tmp_path, monkeypatch):
     monkeypatch.setenv("GEA_HOME", str(tmp_path / "gea-home"))
-    (tmp_path / "gea-home").mkdir()
+    (tmp_path / "gea-home").mkdir(exist_ok=True)
     (tmp_path / "gea-home" / "config.json").write_text(
         json.dumps(
             {
@@ -125,3 +125,30 @@ def test_delegate_prints_a_compact_summary_not_the_raw_output(tmp_path, monkeypa
     out = capsys.readouterr().out
     assert "RAW NOISE" not in out and "verify: passed" in out and "1 changed" in out
     assert log.last_for_task("TASK-001")["verify_ok"] is True
+
+
+def test_reused_pane_gets_a_fresh_session_only_for_a_different_task(tmp_path, monkeypatch):
+    from gea.agents import log
+
+    cleared = []
+    monkeypatch.setenv("GEA_HOME", str(tmp_path / "gea-home"))  # same home _seed() uses
+    monkeypatch.setattr(delegate.herdr, "clear_session", lambda *a: cleared.append(a) or True)
+    log.append({"kind": "build", "task_id": "TASK-000", "agent_id": "codex"})
+    reuse = "pane builder-codex already exists, reusing it"
+    _delegate_with_fakes(tmp_path, monkeypatch, reuse, ("", 0, None))
+    assert cleared == [("builder-codex", "codex")]
+
+    cleared.clear()  # a correction round of the same task keeps the session
+    monkeypatch.setattr(delegate.herdr, "start_builder_pane", lambda *a: "reused existing pane")
+    delegate.delegate_task("TASK-001")
+    assert cleared == []
+
+
+def test_clear_session_only_for_known_clis(monkeypatch):
+    from gea.agents import herdr
+
+    sent = []
+    monkeypatch.setattr(herdr, "prompt_result", lambda p, m, **k: sent.append(m) or ("", 0, None))
+    monkeypatch.setattr(herdr.time, "sleep", lambda s: None)
+    assert herdr.clear_session("p", "claude") is True and sent == ["/clear"]
+    assert herdr.clear_session("p", "kimi") is False and sent == ["/clear"]

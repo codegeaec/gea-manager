@@ -103,6 +103,11 @@ def delegate_task(task_id: str, agent_id: str | None = None) -> int:
         return 1
 
     pane_name = f"builder-{agent.id}"
+    previous = log.last_build_for_agent(agent.id)
+    if "reus" in status and previous and previous.get("task_id") != task_id:
+        # A reused pane still holds the previous task's context: drop it.
+        if herdr.clear_session(pane_name, agent.cli):
+            ui.info(f"{pane_name}: fresh session (was on {previous.get('task_id')})")
     cfg = config.load_project(Path.cwd())
     prompt = BUILDER_PROMPT_TEMPLATE.format(
         task_id=task_id,

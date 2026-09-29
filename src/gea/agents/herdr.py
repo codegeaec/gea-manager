@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from pathlib import Path
 from typing import Any
 
@@ -186,4 +187,19 @@ def notify(title: str, body: str = "", sound: str = "done") -> bool:
     if body:
         cmd += ["--body", body]
     _out, _err, code = proc.run(cmd, timeout=10)
+    return code == 0
+
+
+# Slash command that starts a fresh conversation, per CLI. Only CLIs whose
+# command is known are listed; the rest keep their session.
+CLEAR_COMMANDS = {"claude": "/clear", "codex": "/new", "opencode": "/new"}
+
+
+def clear_session(pane_name: str, cli: str) -> bool:
+    """Start a fresh conversation in the pane. False if the CLI has no known command."""
+    command = CLEAR_COMMANDS.get(cli)
+    if not command:
+        return False
+    _out, code, _error = prompt_result(pane_name, command, wait=False)
+    time.sleep(1)  # let the command land before the real prompt is sent
     return code == 0
