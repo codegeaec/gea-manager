@@ -96,5 +96,9 @@ def dispatch_agents(args) -> int:
         return cmd_reset(args.agent_id)
     if command == "mode":
         return cmd_mode(args.value)
-    print("usage: gea agents [list|available|start|check|reset|mode]")
+    if command == "stats":
+        from gea.agents.stats import run_stats
+
+        return run_stats()
+    print("usage: gea agents [list|available|start|check|reset|mode|stats]")
     return 1

@@ -88,5 +88,7 @@
   "delegate.worktree_failed": "no se pudo crear el worktree — no quedó nada a medias",
   "worktree.remove": "¿Quitar el worktree de {task_id} ({path})? La rama se conserva.",
   "worktree.removed": "worktree de {task_id} quitado",
-  "worktree.remove_failed": "no se pudo quitar el worktree en {path}"
+  "worktree.remove_failed": "no se pudo quitar el worktree en {path}",
+  "stats.empty": "todavía no hay delegaciones registradas",
+  "stats.header": "agente         tier intentos     éxito   media  timeouts"
 }

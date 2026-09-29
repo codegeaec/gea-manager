@@ -88,5 +88,7 @@
   "delegate.worktree_failed": "could not create the worktree — nothing was left behind",
   "worktree.remove": "Remove the worktree of {task_id} ({path})? The branch is kept.",
   "worktree.removed": "worktree of {task_id} removed",
-  "worktree.remove_failed": "could not remove the worktree at {path}"
+  "worktree.remove_failed": "could not remove the worktree at {path}",
+  "stats.empty": "no delegations logged yet",
+  "stats.header": "agent          tier attempts  success     avg  timeouts"
 }

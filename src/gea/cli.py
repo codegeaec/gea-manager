@@ -96,6 +96,7 @@ def _build_parser() -> argparse.ArgumentParser:
     agents_sub = agents_parser.add_subparsers(dest="agents_command")
     agents_sub.add_parser("list", help="list all known agent profiles")
     agents_sub.add_parser("available", help="list available (not exhausted) agents")
+    agents_sub.add_parser("stats", help="success rate and duration per agent and tier")
     agents_start = agents_sub.add_parser("start", help="start a builder pane")
     agents_start.add_argument("agent_id")
     agents_check = agents_sub.add_parser("check", help="check a pane for exhaustion")
