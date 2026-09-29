@@ -59,6 +59,8 @@ def _delegate_with_fakes(tmp_path, monkeypatch, start_status, prompt_result):
     store.create_task("Something", repo_root=repo)
     monkeypatch.setattr(delegate.checkpoint, "create", lambda *_: False)
     monkeypatch.setattr(delegate.herdr, "notify", lambda *a, **k: notified.append(a))
+    monkeypatch.setattr(delegate.checkpoint, "changed_files", lambda *a: ["x.py"])
+    monkeypatch.setattr(delegate.verify, "run_verify", lambda *a, **k: 0)
     monkeypatch.setattr(delegate.herdr, "start_builder_pane", lambda *a: start_status)
     monkeypatch.setattr(delegate.herdr, "prompt_result", lambda *a, **k: prompt_result)
     monkeypatch.setattr(delegate.herdr, "read_pane", lambda *a, **k: "last words")
@@ -114,3 +116,12 @@ def test_delegate_flags_files_outside_the_declared_scope(tmp_path, monkeypatch):
     assert delegate.delegate_task("TASK-001") == 0
     assert log.last_for_task("TASK-001")["files_out_of_scope"] == 1
     assert "`oops.py`" in path.read_text()
+
+
+def test_delegate_prints_a_compact_summary_not_the_raw_output(tmp_path, monkeypatch, capsys):
+    from gea.agents import log
+
+    _delegate_with_fakes(tmp_path, monkeypatch, "started builder-codex", ("RAW NOISE", 0, None))
+    out = capsys.readouterr().out
+    assert "RAW NOISE" not in out and "verify: passed" in out and "1 changed" in out
+    assert log.last_for_task("TASK-001")["verify_ok"] is True

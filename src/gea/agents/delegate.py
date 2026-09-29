@@ -9,7 +9,7 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-from gea import autonomy, checkpoint, config, ui
+from gea import autonomy, checkpoint, config, ui, verify
 from gea.agents import herdr, log, profiles, state
 from gea.tasks import budget as budget_mod
 from gea.tasks import scope, store
@@ -19,7 +19,7 @@ from gea.tasks.store import find_task_path
 # prefix stays identical across delegations so prompt caches can reuse it.
 BUILDER_PROMPT_TEMPLATE = (
     "Follow .agents/builder.md: implement the task below following its plan. "
-    "Move it to in-progress, run `gea verify --task {task_id}`, fill in "
+    "Move it to in-progress, run `gea verify --quiet --task {task_id}`, fill in "
     "Implementation Notes and Deviations, and leave it in review. Do not commit.\n"
     "Task: {task_path}\n"
     "Autonomy: {autonomy_line}"
@@ -59,6 +59,16 @@ def _check_scope(task_id: str, task_path: Path) -> list[str]:
     return stray
 
 
+def _print_summary(task_id, agent_id, started, task_path, stray, verify_ok) -> None:
+    """The orchestrator reads this instead of the builder's raw terminal output."""
+    minutes, seconds = divmod(round(time.monotonic() - started), 60)
+    ui.ok(f"{task_id} done by {agent_id} in {minutes}m{seconds:02d}s")
+    files = checkpoint.changed_files(task_id) or []
+    print(f"  files:  {len(files)} changed, {len(stray)} outside scope")
+    print(f"  verify: {'passed' if verify_ok else 'FAILED — see gea verify --task ' + task_id}")
+    print(f"  task:   {task_path}")
+
+
 def delegate_task(task_id: str, agent_id: str | None = None) -> int:
     task_path = find_task_path(task_id)
     if task_path is None:
@@ -76,7 +86,9 @@ def delegate_task(task_id: str, agent_id: str | None = None) -> int:
     started = time.monotonic()
     attempt = len(log.read(task_id=task_id)) + 1
 
-    def record(result: str, stray: list[str] | None = None) -> None:
+    def record(
+        result: str, stray: list[str] | None = None, verify_ok: bool | None = None
+    ) -> None:
         log.append(
             {
                 "project": Path.cwd().name,
@@ -87,6 +99,7 @@ def delegate_task(task_id: str, agent_id: str | None = None) -> int:
                 "duration_s": round(time.monotonic() - started),
                 "round": attempt,
                 "files_out_of_scope": len(stray or []),
+                "verify_ok": verify_ok,
             }
         )
         herdr.notify(
@@ -110,7 +123,6 @@ def delegate_task(task_id: str, agent_id: str | None = None) -> int:
     )
     budget = budget_mod.seconds_for(task_path, Path.cwd())
     out, code, error = herdr.prompt_result(pane_name, prompt, wait=True, budget_s=budget)
-    print(out)
     if error == "timeout":
         tail = herdr.read_pane(pane_name)
         store.append_to_section(
@@ -122,6 +134,12 @@ def delegate_task(task_id: str, agent_id: str | None = None) -> int:
         ui.warn(f"budget of {budget // 60} min exceeded — the builder pane was left running")
         record("timeout")
         return 1
+    if code != 0:
+        print("\n".join(out.strip().splitlines()[-5:]))
+        record("blocked" if error == "agent_blocked" else "error")
+        return 1
     stray = _check_scope(task_id, task_path)
-    record("done" if code == 0 else ("blocked" if error == "agent_blocked" else "error"), stray)
-    return 0 if code == 0 else 1
+    verify_ok = verify.run_verify(Path.cwd(), task_id, quiet=True) == 0
+    record("done", stray, verify_ok)
+    _print_summary(task_id, agent.id, started, task_path, stray, verify_ok)
+    return 0

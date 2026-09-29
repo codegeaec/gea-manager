@@ -38,7 +38,7 @@ def test_verify_task_runs_acceptance_commands(repo, monkeypatch):
     path = store.create_task("A", repo_root=repo)
     path.write_text(path.read_text().replace("- [ ] \n", "- [ ] `echo hi`\n", 1))
     ran = []
-    monkeypatch.setattr(verify, "run_commands", lambda cmds: ran.extend(cmds) or [])
+    monkeypatch.setattr(verify, "run_commands", lambda cmds, quiet=False: ran.extend(cmds) or [])
     monkeypatch.chdir(repo)
     assert verify.run_verify(repo, task_id="TASK-001") == 0
     assert ran == ["echo hi"]
@@ -76,3 +76,12 @@ def test_acceptance_module_imports_cleanly_in_a_fresh_interpreter():
 
     for module in ("gea.tasks.acceptance", "gea.tasks.decisions", "gea.verify"):
         subprocess.run([sys.executable, "-c", f"import {module}"], check=True)
+
+
+def test_quiet_verify_prints_only_failures(repo, monkeypatch, capsys):
+    (repo / "gea.json").write_text(
+        '{"tasks": {"location": "repo"}, "verify": ["true", "false"]}'
+    )
+    assert verify.run_verify(repo, quiet=True) == 1
+    out = capsys.readouterr().out
+    assert "false" in out and "true" not in out.replace("false", "")

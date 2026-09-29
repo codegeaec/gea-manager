@@ -63,6 +63,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     verify_parser = subparsers.add_parser("verify", help="run this project's verify commands")
     verify_parser.add_argument("--task", default=None, help="also run this task's acceptance")
+    verify_parser.add_argument("--quiet", action="store_true", help="print failures only")
 
     subparsers.add_parser("scan-secrets", help="scan staged changes for secrets (pre-commit)")
     subparsers.add_parser("lint", help="check the size of AGENTS.md/CLAUDE.md/skills context")
@@ -162,7 +163,7 @@ def _main(argv: list[str] | None = None) -> int:
     if args.command == "verify":
         from gea.verify import run_verify
 
-        return run_verify(task_id=args.task)
+        return run_verify(task_id=args.task, quiet=args.quiet)
 
     if args.command == "scan-secrets":
         from gea.secrets import run_scan

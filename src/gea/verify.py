@@ -14,13 +14,15 @@ from pathlib import Path
 from gea import config, proc, ui
 
 
-def run_commands(commands: list[str]) -> list[str]:
-    """Run each command through bash, printing pass/fail. Returns the failed ones."""
+def run_commands(commands: list[str], quiet: bool = False) -> list[str]:
+    """Run each command through bash, printing pass/fail (only failures when
+    `quiet`). Returns the failed ones."""
     failed = []
     for command in commands:
         out, err, code = proc.run(["bash", "-c", command], timeout=300)
         if code == 0:
-            ui.ok(command)
+            if not quiet:
+                ui.ok(command)
         else:
             ui.err(command)
             tail = (out + err).strip().splitlines()[-20:]
@@ -30,7 +32,9 @@ def run_commands(commands: list[str]) -> list[str]:
     return failed
 
 
-def run_verify(repo_root: Path | None = None, task_id: str | None = None) -> int:
+def run_verify(
+    repo_root: Path | None = None, task_id: str | None = None, quiet: bool = False
+) -> int:
     repo_root = repo_root or Path.cwd()
     cfg = config.load_project(repo_root)
     commands: list[str] = list(cfg.get("verify", []))
@@ -48,9 +52,9 @@ def run_verify(repo_root: Path | None = None, task_id: str | None = None) -> int
         ui.warn("no verify commands configured — run `gea init` or edit gea.json")
         return 1
 
-    failed = run_commands(commands)
+    failed = run_commands(commands, quiet=quiet)
     if failed:
         ui.warn(f"{len(failed)} command(s) failed")
         return 1
-    ui.ok("all verify commands passed")
+    ui.ok(f"all {len(commands)} verify command(s) passed")
     return 0
