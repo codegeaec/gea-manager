@@ -101,3 +101,11 @@ def test_agents_md_template_keeps_variable_content_last():
         first_var = text.index("{")
         assert text.index("## Project") < first_var
         assert "{project_name}" not in text[: text.index("## Project")]
+
+
+def test_strict_lint_fails_only_on_oversized_instruction_files(tmp_path):
+    (tmp_path / "AGENTS.md").write_text("small")
+    assert lint_context.run_lint(tmp_path, strict=True) == 0
+    (tmp_path / "AGENTS.md").write_text("x" * 4 * (lint_context.MAX_INSTRUCTION_TOKENS + 10))
+    assert lint_context.run_lint(tmp_path, strict=True) == 1
+    assert lint_context.run_lint(tmp_path) == 0  # advisory without --strict

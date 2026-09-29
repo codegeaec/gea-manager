@@ -57,7 +57,9 @@ def collect(repo_root: Path | None = None) -> list[Item]:
     return items
 
 
-def run_lint(repo_root: Path | None = None) -> int:
+def run_lint(repo_root: Path | None = None, strict: bool = False) -> int:
+    """Advisory by default. `strict` (pre-commit) fails when AGENTS.md/CLAUDE.md
+    are over their limits — skills never fail it."""
     items = collect(repo_root)
     if not items:
         ui.ok("no AGENTS.md, CLAUDE.md or skills found to lint")
@@ -76,4 +78,6 @@ def run_lint(repo_root: Path | None = None) -> int:
             ui.warn(f"~{item.tokens} tokens  {item.label} (limit ~{item.limit})")
     if skills:
         ui.ok(f"{len(skills)} skill(s) scanned, largest ~{max(i.tokens for i in skills)} tokens")
+    if strict and (total > MAX_TOTAL_TOKENS or any(i.over for i in instructions)):
+        return 1
     return 0

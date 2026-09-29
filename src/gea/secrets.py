@@ -19,7 +19,7 @@ HOOK_MARKER = "# gea:secret-scan"
 HOOK_BODY = f"""#!/bin/sh
 {HOOK_MARKER}
 command -v gea >/dev/null 2>&1 || exit 0
-exec gea scan-secrets
+gea scan-secrets && gea lint --strict
 """
 
 RULES: list[tuple[str, re.Pattern[str]]] = [
@@ -94,7 +94,11 @@ def install_hook(repo_root: Path) -> str:
     if not hook.parent.is_dir():
         return "skipped"
     if hook.exists():
-        return "present" if HOOK_MARKER in hook.read_text(encoding="utf-8") else "skipped"
+        current = hook.read_text(encoding="utf-8")
+        if HOOK_MARKER not in current:
+            return "skipped"
+        if current == HOOK_BODY:
+            return "present"
     if dryrun.active():
         dryrun.report(f"install the secret-scan hook at {hook}")
         return "installed"

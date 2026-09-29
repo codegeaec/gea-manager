@@ -83,7 +83,10 @@ def _build_parser() -> argparse.ArgumentParser:
     handoff_parser.add_argument("--yes", action="store_true", help="skip the primary-agent prompt")
 
     subparsers.add_parser("scan-secrets", help="scan staged changes for secrets (pre-commit)")
-    subparsers.add_parser("lint", help="check the size of AGENTS.md/CLAUDE.md/skills context")
+    lint_parser = subparsers.add_parser(
+        "lint", help="check the size of AGENTS.md/CLAUDE.md/skills context"
+    )
+    lint_parser.add_argument("--strict", action="store_true", help="fail when over the limits")
 
     undo_parser = subparsers.add_parser("undo", help="restore the checkpoint taken before delegate")
     undo_parser.add_argument("task_id")
@@ -209,7 +212,7 @@ def _main(argv: list[str] | None = None) -> int:
     if args.command == "lint":
         from gea.lint_context import run_lint
 
-        return run_lint()
+        return run_lint(strict=args.strict)
 
     if args.command == "undo":
         from gea.checkpoint import run_undo

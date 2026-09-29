@@ -44,3 +44,18 @@ def test_run_scan_blocks_a_staged_secret(tmp_path):
     (tmp_path / "a.txt").write_text('token = "ghp_' + "a" * 36 + '"\n', encoding="utf-8")
     git("add", "a.txt")
     assert secrets.run_scan(tmp_path) == 1
+
+
+def test_hook_runs_the_secret_scan_and_the_strict_lint(tmp_path):
+    (tmp_path / ".git" / "hooks").mkdir(parents=True)
+    secrets.install_hook(tmp_path)
+    body = (tmp_path / ".git" / "hooks" / "pre-commit").read_text(encoding="utf-8")
+    assert "gea scan-secrets" in body and "gea lint --strict" in body
+
+
+def test_outdated_gea_hook_is_upgraded_in_place(tmp_path):
+    hooks = tmp_path / ".git" / "hooks"
+    hooks.mkdir(parents=True)
+    (hooks / "pre-commit").write_text(f"#!/bin/sh\n{secrets.HOOK_MARKER}\nexec gea scan-secrets\n")
+    assert secrets.install_hook(tmp_path) == "installed"
+    assert "lint --strict" in (hooks / "pre-commit").read_text(encoding="utf-8")
