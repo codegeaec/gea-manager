@@ -171,6 +171,13 @@ def run_init(dry_run: bool = False) -> int:
 
     if scaffold.update_gitignore(repo_root, tasks_location):
         ui.ok(".gitignore updated")
+    if scaffold.gitignore_has_gea_json(repo_root) and ui.ask_yes_no(
+        "gea.json is gitignored. Commit it as the team's shared policy "
+        "(personal choices live in gea.local.json)?",
+        default=True,
+    ):
+        scaffold.stop_ignoring_gea_json(repo_root)
+        ui.ok("gea.json is no longer ignored — commit it")
 
     if tasks_location == "home":
         _ensure_gea_symlink(repo_root, project_name)

@@ -192,7 +192,7 @@ def merge_claude_settings(repo_root: Path) -> bool:
 
 def update_gitignore(repo_root: Path, tasks_location: str) -> bool:
     path = repo_root / ".gitignore"
-    entries = ["gea.json", ".codegraph/"]
+    entries = ["gea.local.json", ".codegraph/"]
     if tasks_location == "home":
         entries.append(".gea")
     existing = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
@@ -206,4 +206,27 @@ def update_gitignore(repo_root: Path, tasks_location: str) -> bool:
         if existing and existing[-1] != "":
             f.write("\n")
         f.write("\n".join(to_add) + "\n")
+    return True
+
+
+def gitignore_has_gea_json(repo_root: Path) -> bool:
+    path = repo_root / ".gitignore"
+    return path.exists() and "gea.json" in path.read_text(encoding="utf-8").splitlines()
+
+
+def stop_ignoring_gea_json(repo_root: Path) -> bool:
+    """Team mode: `gea.json` is now committed policy, so drop the old
+    `gea.json` line from .gitignore (backing the file up first). Returns
+    True if the line was there."""
+    path = repo_root / ".gitignore"
+    if not path.exists():
+        return False
+    lines = path.read_text(encoding="utf-8").splitlines()
+    if "gea.json" not in lines:
+        return False
+    if dryrun.active():
+        dryrun.report(f"remove gea.json from {path} (backup first)")
+        return True
+    path.with_name(".gitignore.bak").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    path.write_text("\n".join(ln for ln in lines if ln != "gea.json") + "\n", encoding="utf-8")
     return True

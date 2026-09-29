@@ -107,10 +107,10 @@ def test_merge_claude_settings_noop_if_attribution_exists(tmp_path):
     assert scaffold.merge_claude_settings(tmp_path) is False
 
 
-def test_update_gitignore_adds_gea_json_and_gea_dir_for_home(tmp_path):
+def test_update_gitignore_adds_gea_local_json_and_gea_dir_for_home(tmp_path):
     scaffold.update_gitignore(tmp_path, "home")
     content = (tmp_path / ".gitignore").read_text(encoding="utf-8")
-    assert "gea.json" in content
+    assert "gea.local.json" in content
     assert ".gea" in content
 
 
