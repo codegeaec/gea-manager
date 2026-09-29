@@ -15,6 +15,7 @@ from gea.tasks.sections import section
 
 ALWAYS_ALLOWED = ("docs/", ".gea/")
 BACKTICKED = re.compile(r"`([^`]+)`")
+CHECKBOX_PREFIX = re.compile(r"^[-*]\s*(\[[ xX]\])?\s*")
 
 
 def allowed_patterns(task_text: str) -> list[str]:
@@ -38,3 +39,20 @@ def out_of_scope(files: list[str], patterns: list[str]) -> list[str]:
         for f in files
         if not f.startswith(ALWAYS_ALLOWED) and not any(_matches(f, p) for p in patterns)
     ]
+
+
+def missing_for_delegation(task_text: str) -> list[str]:
+    """Sections a self-sufficient task must fill in before delegating: the
+    builder should not have to explore to find its files or its definition
+    of done."""
+    missing = []
+    if not allowed_patterns(task_text):
+        missing.append("## Files (list the paths in backticks)")
+    bullets = [
+        CHECKBOX_PREFIX.sub("", line.strip())
+        for line in section(task_text, "Acceptance").splitlines()
+        if line.lstrip().startswith(("-", "*"))
+    ]
+    if not any(bullets):
+        missing.append("## Acceptance (one bullet per criterion)")
+    return missing

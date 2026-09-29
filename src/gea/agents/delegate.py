@@ -58,6 +58,8 @@ def delegate_task(task_id: str, agent_id: str | None = None) -> int:
         ui.err(f"task not found: {task_id}")
         return 1
 
+    for gap in scope.missing_for_delegation(task_path.read_text(encoding="utf-8")):
+        ui.warn(f"{task_id} is not self-sufficient — empty: {gap}; the builder must explore")
     tier = store.read_header(task_path, "Tier")
     agent = profiles.pick_agent(agent_id, tier=tier)
     if agent is None:

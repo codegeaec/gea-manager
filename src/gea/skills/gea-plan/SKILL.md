@@ -31,7 +31,7 @@ Y" when X already covers most of it.
 ## 3. Write the task
 
 ```bash
-gea task new "<short title>"
+gea task new "<short title>" [--type bugfix|feature|refactor|spike]
 ```
 
 Fill in Objective, Context, Requirements, Existing Implementation, Plan
@@ -39,6 +39,21 @@ Fill in Objective, Context, Requirements, Existing Implementation, Plan
 and Review empty for whoever implements it. Be concrete: file paths,
 function names, the exact verify commands (`gea verify` already knows
 them from `gea.json`, but call out anything task-specific).
+
+**Make the task self-sufficient** — a builder that has to explore burns the
+tokens you were trying to save. Two sections are mandatory before delegating
+(`gea delegate` warns if they are empty):
+
+- `## Files`: every path the builder may touch, each in backticks (globs
+  and bare directories are fine). Fill it using codegraph
+  (`.codegraph/`) — look up the symbols and their callers instead of
+  guessing. `gea delegate` reports anything touched outside this list.
+- `## Acceptance`: one bullet per criterion; put a runnable command in
+  backticks so `gea verify --task <ID>` checks it.
+
+Also set `Tier: S|M|L` in the header (S = mechanical, L = delicate or
+cross-cutting; gea routes cheaper agents to S and by track record to L) and,
+if the default 30 minutes is wrong, `Budget: 45m`.
 
 ## 4. Split into subtasks if it's big
 

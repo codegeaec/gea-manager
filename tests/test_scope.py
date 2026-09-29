@@ -39,3 +39,14 @@ def test_changed_files_ignores_pre_existing_dirt(tmp_path):
     (tmp_path / "new.py").write_text("builder")
     assert checkpoint.changed_files("TASK-001", tmp_path) == ["b.txt", "new.py"]
     assert checkpoint.changed_files("TASK-404", tmp_path) is None
+
+
+def test_missing_for_delegation_flags_empty_files_and_acceptance():
+    from gea.tasks import templates
+
+    empty = templates.render_task("TASK-001", "T", "2026-01-01")
+    assert len(scope.missing_for_delegation(empty)) == 2
+    filled = empty.replace("## Files\n", "## Files\n\n- `a.py`\n", 1).replace(
+        "- [ ] \n", "- [ ] works: `pytest`\n", 1
+    )
+    assert scope.missing_for_delegation(filled) == []
