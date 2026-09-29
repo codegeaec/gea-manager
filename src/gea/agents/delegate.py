@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 from gea import autonomy, checkpoint, config, ui, verify
-from gea.agents import herdr, log, profiles, state
+from gea.agents import herdr, log, profiles
 from gea.tasks import budget as budget_mod
 from gea.tasks import scope, store
 from gea.tasks.store import find_task_path
@@ -24,23 +24,6 @@ BUILDER_PROMPT_TEMPLATE = (
     "Task: {task_path}\n"
     "Autonomy: {autonomy_line}"
 )
-
-
-def _pick_agent(agent_id: str | None) -> profiles.AgentProfile | None:
-    available_ids = set()
-    pools = state.load()
-    allow = config.load_project(Path.cwd()).get("builders", {}).get("allow")
-    all_profiles = profiles.load_profiles()
-    for p in all_profiles:
-        if allow and p.id not in allow:
-            continue
-        if state.is_pool_available(p.pool, pools):
-            available_ids.add(p.id)
-
-    if agent_id:
-        return next((p for p in all_profiles if p.id == agent_id and p.id in available_ids), None)
-    ranked = [p for p in all_profiles if p.id in available_ids]
-    return ranked[0] if ranked else None
 
 
 def _check_scope(task_id: str, task_path: Path) -> list[str]:
@@ -75,7 +58,7 @@ def delegate_task(task_id: str, agent_id: str | None = None) -> int:
         ui.err(f"task not found: {task_id}")
         return 1
 
-    agent = _pick_agent(agent_id)
+    agent = profiles.pick_agent(agent_id)
     if agent is None:
         ui.warn("no builder agent available — implement it yourself or run `gea agents available`")
         return 1
@@ -92,6 +75,7 @@ def delegate_task(task_id: str, agent_id: str | None = None) -> int:
         log.append(
             {
                 "project": Path.cwd().name,
+                "kind": "build",
                 "task_id": task_id,
                 "agent_id": agent.id,
                 "pool": agent.pool,

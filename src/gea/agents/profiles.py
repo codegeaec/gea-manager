@@ -10,8 +10,10 @@ narrow this down to a subset of ids for that project only.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from pathlib import Path
 
 from gea import config, platform, proc
+from gea.agents import state
 
 # Known cloud profiles behind a single CLI — mirrors what a real install
 # would report via `opencode models`, kept as a static fallback so
@@ -118,3 +120,25 @@ def load_profiles() -> list[AgentProfile]:
     cfg = config.load_global()
     raw = cfg.get("builders", {}).get("profiles", [])
     return [AgentProfile(**p) for p in raw]
+
+
+def pick_agent(
+    agent_id: str | None = None,
+    exclude_pools: tuple[str, ...] | list[str] = (),
+    repo_root: Path | None = None,
+) -> AgentProfile | None:
+    """First available builder: not exhausted, allowed by the project's
+    `builders.allow`, and not in `exclude_pools`. With `agent_id`, only that
+    profile qualifies."""
+    pools = state.load()
+    allow = config.load_project(repo_root or Path.cwd()).get("builders", {}).get("allow")
+    candidates = [
+        p
+        for p in load_profiles()
+        if (not allow or p.id in allow)
+        and p.pool not in exclude_pools
+        and state.is_pool_available(p.pool, pools)
+    ]
+    if agent_id:
+        return next((p for p in candidates if p.id == agent_id), None)
+    return candidates[0] if candidates else None

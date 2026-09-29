@@ -19,6 +19,9 @@ after a fix.
   `cat` files one by one — that is where review tokens go.
 - In the task: is `Status: review`? Are *Implementation Notes* and
   *Deviations* filled in (even briefly)?
+- Want a second opinion from a different model? `gea review <TASK-ID>`
+  sends the pack to an available agent that is *not* the task's builder
+  and has it write findings into `## Review`.
 - Open a source file only when the pack's excerpt cuts something you need.
 
 ## 2. Check against
