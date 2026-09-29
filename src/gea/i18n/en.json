@@ -94,5 +94,7 @@
   "status.tasks": "active tasks",
   "status.panes": "gea panes in herdr",
   "status.exhausted": "exhausted pools (until)",
-  "status.none": "(none)"
+  "status.none": "(none)",
+  "task.title_required": "give a title or use --from-issue",
+  "task.issue_failed": "could not read issue #{number}: {error}"
 }

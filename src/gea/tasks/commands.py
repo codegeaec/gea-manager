@@ -2,7 +2,24 @@
 
 from __future__ import annotations
 
+from gea.i18n import t
 from gea.tasks import store
+
+
+def _read_issue(number: str) -> dict | None:
+    import json
+
+    from gea import proc, ui
+
+    out, err, code = proc.run(["gh", "issue", "view", str(number), "--json", "title,body"])
+    try:
+        issue = json.loads(out)
+    except json.JSONDecodeError:
+        issue = None
+    if code != 0 or not isinstance(issue, dict) or "title" not in issue:
+        ui.err(t("task.issue_failed", number=number, error=err.strip()))
+        return None
+    return issue
 
 
 def _offer_worktree_removal(task_id: str) -> None:
@@ -28,11 +45,23 @@ def _offer_worktree_removal(task_id: str) -> None:
 def dispatch_task(args) -> int:
     command = args.task_command
     if command == "new":
+        title, body = args.title, None
+        if args.from_issue:
+            issue = _read_issue(args.from_issue)
+            if issue is None:
+                return 1
+            title, body = args.title or issue["title"], issue.get("body") or ""
+        if not title:
+            print(t("task.title_required"))
+            return 1
         try:
-            path = store.create_task(args.title, task_type=args.type)
+            path = store.create_task(title, task_type=args.type)
         except ValueError as exc:
             print(exc)
             return 1
+        if body:
+            heading = "Symptom" if args.type == "bugfix" else "Context"
+            store.append_to_section(path, heading, f"From issue #{args.from_issue}:\n\n{body}")
         print(path)
         return 0
     if command == "list":

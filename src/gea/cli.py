@@ -38,7 +38,8 @@ def _build_parser() -> argparse.ArgumentParser:
     task_parser = subparsers.add_parser("task", help="manage tasks")
     task_sub = task_parser.add_subparsers(dest="task_command")
     task_new = task_sub.add_parser("new", help="create a new task")
-    task_new.add_argument("title")
+    task_new.add_argument("title", nargs="?", default=None)
+    task_new.add_argument("--from-issue", default=None, help="seed the task from a GitHub issue")
     task_new.add_argument(
         "--type", choices=["bugfix", "feature", "refactor", "spike"], default=None,
         help="use a type-specific task template",

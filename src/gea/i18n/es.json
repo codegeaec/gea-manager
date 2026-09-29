@@ -94,5 +94,7 @@
   "status.tasks": "tasks activas",
   "status.panes": "panes de gea en herdr",
   "status.exhausted": "pools agotados (hasta)",
-  "status.none": "(ninguno)"
+  "status.none": "(ninguno)",
+  "task.title_required": "pasá un título o usá --from-issue",
+  "task.issue_failed": "no se pudo leer el issue #{number}: {error}"
 }
