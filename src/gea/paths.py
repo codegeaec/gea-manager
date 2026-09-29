@@ -40,6 +40,17 @@ def local_bin() -> Path:
     return home() / ".local" / "bin"
 
 
+def skill_dirs() -> list[Path]:
+    """Where agents keep globally installed skills (only existing dirs)."""
+    candidates = [
+        home() / ".claude" / "skills",
+        home() / ".agents" / "skills",
+        home() / ".codex" / "skills",
+        home() / ".config" / "opencode" / "skills",
+    ]
+    return [p for p in candidates if p.is_dir()]
+
+
 def shell_rc_files() -> list[Path]:
     candidates = [home() / ".bashrc", home() / ".zshrc"]
     return [p for p in candidates if p.exists()]

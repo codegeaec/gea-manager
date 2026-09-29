@@ -35,7 +35,18 @@ AGY_PROFILES = [
         "pool": "agy-claude",
         "priority": 10.5,
     },
+    {
+        "id": "agy-gpt-oss",
+        "cli": "agy",
+        "model": "gpt-oss-120b-medium",
+        "pool": "agy-gpt-oss",
+        "priority": 10.7,
+    },
 ]
+# agy exposes no quota command (`agy models` only lists models), so each
+# model family gets its own pool and exhaustion is detected from the pane
+# output like every other CLI (agents/state.py). The Gemini profile has no
+# pinned model: it runs agy's default.
 
 
 @dataclass
@@ -68,7 +79,10 @@ def detect_profiles() -> list[AgentProfile]:
                 )
 
     if platform.which("agy"):
+        models_out, _err, _code = proc.run(["agy", "models"])
         for profile in AGY_PROFILES:
+            if profile["model"] and models_out and profile["model"] not in models_out:
+                continue
             detected.append(
                 AgentProfile(
                     id=profile["id"],
