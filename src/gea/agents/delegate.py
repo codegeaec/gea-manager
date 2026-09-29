@@ -11,6 +11,7 @@ from pathlib import Path
 
 from gea import autonomy, checkpoint, config, ui, verify
 from gea.agents import herdr, log, profiles
+from gea.i18n import t
 from gea.tasks import budget as budget_mod
 from gea.tasks import scope, store
 from gea.tasks.store import find_task_path
@@ -32,7 +33,7 @@ def _check_scope(task_id: str, task_path: Path) -> list[str]:
     patterns = scope.allowed_patterns(task_path.read_text(encoding="utf-8"))
     stray = scope.out_of_scope(files or [], patterns)
     if stray:
-        ui.warn(f"{len(stray)} file(s) touched outside the task's ## Files: {', '.join(stray)}")
+        ui.warn(t("delegate.stray", count=len(stray), files=", ".join(stray)))
         store.append_to_section(
             task_path,
             "Review",
@@ -45,30 +46,30 @@ def _check_scope(task_id: str, task_path: Path) -> list[str]:
 def _print_summary(task_id, agent_id, started, task_path, stray, verify_ok) -> None:
     """The orchestrator reads this instead of the builder's raw terminal output."""
     minutes, seconds = divmod(round(time.monotonic() - started), 60)
-    ui.ok(f"{task_id} done by {agent_id} in {minutes}m{seconds:02d}s")
+    ui.ok(t("delegate.done", task_id=task_id, agent=agent_id, minutes=minutes, seconds=seconds))
     files = checkpoint.changed_files(task_id) or []
-    print(f"  files:  {len(files)} changed, {len(stray)} outside scope")
-    print(f"  verify: {'passed' if verify_ok else 'FAILED — see gea verify --task ' + task_id}")
-    print(f"  task:   {task_path}")
+    print(t("delegate.files", changed=len(files), stray=len(stray)))
+    print(t("delegate.verify_ok") if verify_ok else t("delegate.verify_bad", task_id=task_id))
+    print(t("delegate.task_line", path=task_path))
 
 
 def delegate_task(task_id: str, agent_id: str | None = None) -> int:
     task_path = find_task_path(task_id)
     if task_path is None:
-        ui.err(f"task not found: {task_id}")
+        ui.err(t("common.task_not_found", task_id=task_id))
         return 1
 
     for gap in scope.missing_for_delegation(task_path.read_text(encoding="utf-8")):
-        ui.warn(f"{task_id} is not self-sufficient — empty: {gap}; the builder must explore")
+        ui.warn(t("delegate.gap", task_id=task_id, gap=gap))
     tier = store.read_header(task_path, "Tier")
     agent = profiles.pick_agent(agent_id, tier=tier)
     if agent is None:
-        ui.warn("no builder agent available — implement it yourself or run `gea agents available`")
+        ui.warn(t("delegate.no_agent"))
         return 1
 
     if checkpoint.create(task_id):
-        ui.info(f"checkpoint saved — `gea undo {task_id}` restores it")
-    ui.info(f"delegating {task_id} to {agent.id} ({agent.cli})")
+        ui.info(t("delegate.checkpoint", task_id=task_id))
+    ui.info(t("delegate.delegating", task_id=task_id, agent=agent.id, cli=agent.cli))
     started = time.monotonic()
     attempt = len(log.read(task_id=task_id)) + 1
 
@@ -107,7 +108,7 @@ def delegate_task(task_id: str, agent_id: str | None = None) -> int:
     if "reus" in status and previous and previous.get("task_id") != task_id:
         # A reused pane still holds the previous task's context: drop it.
         if herdr.clear_session(pane_name, agent.cli):
-            ui.info(f"{pane_name}: fresh session (was on {previous.get('task_id')})")
+            ui.info(t("delegate.fresh", pane=pane_name, previous=previous.get("task_id")))
     cfg = config.load_project(Path.cwd())
     prompt = BUILDER_PROMPT_TEMPLATE.format(
         task_id=task_id,
@@ -124,7 +125,7 @@ def delegate_task(task_id: str, agent_id: str | None = None) -> int:
             f"gea: builder `{agent.id}` hit the {budget // 60} min budget; "
             f"last output:\n\n```\n{tail.strip()}\n```",
         )
-        ui.warn(f"budget of {budget // 60} min exceeded — the builder pane was left running")
+        ui.warn(t("delegate.budget", minutes=budget // 60))
         record("timeout")
         return 1
     if code != 0:

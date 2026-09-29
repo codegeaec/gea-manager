@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from gea import paths, ui
+from gea.i18n import t
 
 CHARS_PER_TOKEN = 4
 MAX_INSTRUCTION_TOKENS = 2000  # AGENTS.md / CLAUDE.md, loaded on every turn
@@ -62,22 +63,25 @@ def run_lint(repo_root: Path | None = None, strict: bool = False) -> int:
     are over their limits — skills never fail it."""
     items = collect(repo_root)
     if not items:
-        ui.ok("no AGENTS.md, CLAUDE.md or skills found to lint")
+        ui.ok(t("lint.nothing"))
         return 0
     instructions = [i for i in items if i.limit == MAX_INSTRUCTION_TOKENS]
     skills = [i for i in items if i.limit == MAX_SKILL_TOKENS]
     for item in sorted(instructions, key=lambda i: -i.tokens):
-        report = ui.warn if item.over else ui.ok
-        limit = f" (limit ~{item.limit})" if item.over else ""
-        report(f"~{item.tokens} tokens  {item.label}{limit}")
+        if item.over:
+            ui.warn(t("lint.item_over", tokens=item.tokens, label=item.label, limit=item.limit))
+        else:
+            ui.ok(t("lint.item", tokens=item.tokens, label=item.label))
     total = sum(i.tokens for i in instructions)
     if total > MAX_TOTAL_TOKENS:
-        ui.warn(f"AGENTS.md + CLAUDE.md total ~{total} tokens (limit ~{MAX_TOTAL_TOKENS})")
+        ui.warn(t("lint.total", total=total, limit=MAX_TOTAL_TOKENS))
     for item in sorted(skills, key=lambda i: -i.tokens):
         if item.over:
-            ui.warn(f"~{item.tokens} tokens  {item.label} (limit ~{item.limit})")
+            ui.warn(t("lint.item_over", tokens=item.tokens, label=item.label, limit=item.limit))
     if skills:
-        ui.ok(f"{len(skills)} skill(s) scanned, largest ~{max(i.tokens for i in skills)} tokens")
+        ui.ok(
+            t("lint.skills", count=len(skills), largest=max(i.tokens for i in skills))
+        )
     if strict and (total > MAX_TOTAL_TOKENS or any(i.over for i in instructions)):
         return 1
     return 0

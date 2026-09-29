@@ -16,6 +16,7 @@ from pathlib import Path
 
 from gea import config, platform, proc, ui
 from gea.agents import herdr, log, state
+from gea.i18n import t
 from gea.tasks import store
 
 ORCHESTRATORS = ("claude", "codex", "opencode", "agy", "kimi")
@@ -100,19 +101,19 @@ def build(root: Path) -> str:
 def run_handoff(to: str | None = None, assume_yes: bool = False) -> int:
     root = Path.cwd()
     if to and to not in ORCHESTRATORS:
-        ui.err(f"unknown orchestrator: {to} (use {', '.join(ORCHESTRATORS)})")
+        ui.err(t("handoff.unknown", to=to, options=", ".join(ORCHESTRATORS)))
         return 1
     if to and not platform.which(to):
-        ui.err(f"{to} is not installed")
+        ui.err(t("handoff.not_installed", to=to))
         return 1
 
     target = store.task_root(root) / "HANDOFF.md"
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(build(root), encoding="utf-8")
-    ui.ok(f"handoff written: {target}")
+    ui.ok(t("handoff.written", target=target))
     resume = f"Read {target} and continue as orchestrator."
     if not to:
-        print(f"Paste into the new orchestrator:\n  {resume}")
+        print(t("handoff.paste", resume=resume))
         return 0
 
     started = time.monotonic()
@@ -132,9 +133,9 @@ def run_handoff(to: str | None = None, assume_yes: bool = False) -> int:
     )
     cfg = config.load_project(root)
     if cfg.get("primary") != to and ui.ask_yes_no(
-        f"Make {to} this project's primary agent in gea.json?", default=True, assume_yes=assume_yes
+        t("handoff.make_primary", to=to), default=True, assume_yes=assume_yes
     ):
         cfg["primary"] = to
         config.save_project(root, cfg)
-        ui.ok(f"primary = {to}")
+        ui.ok(t("handoff.primary_set", to=to))
     return 0

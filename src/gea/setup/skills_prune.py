@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from gea import dryrun, paths, proc, ui
+from gea.i18n import t
 from gea.lint_context import estimate_tokens
 from gea.setup import skills
 
@@ -48,11 +49,11 @@ def foreign_skills() -> list[InstalledSkill]:
 def run_prune() -> int:
     candidates = foreign_skills()
     if not candidates:
-        ui.ok("no skills outside gea's list — nothing to prune")
+        ui.ok(t("prune.none"))
         return 0
-    ui.info(f"{len(candidates)} skill(s) not installed by gea (largest first):")
+    ui.info(t("prune.header", count=len(candidates)))
     chosen = [
-        s for s in candidates if ui.ask_yes_no(f"Remove {s.name} (~{s.tokens} tokens)?", False)
+        s for s in candidates if ui.ask_yes_no(t("prune.ask", name=s.name, tokens=s.tokens), False)
     ]
     if not chosen:
         return 0
@@ -62,7 +63,7 @@ def run_prune() -> int:
         return 0
     code = proc.run_visible(["npx", "skills", "remove", "-g", "-y", *names], timeout=120)
     if code != 0:
-        ui.err("removal failed")
+        ui.err(t("prune.failed"))
         return 1
-    ui.ok(f"removed: {', '.join(names)}")
+    ui.ok(t("prune.removed", names=", ".join(names)))
     return 0

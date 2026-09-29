@@ -19,3 +19,13 @@ def test_t_formats_variables():
 def test_t_default_lang_is_spanish():
     assert t("common.yes", lang="es") == "sí"
     assert t("common.yes", lang="en") == "yes"
+
+
+def test_new_command_messages_exist_in_both_languages_with_the_same_placeholders():
+    import re
+
+    from gea.i18n import _load_catalog
+
+    en, es = _load_catalog("en"), _load_catalog("es")
+    for key in (k for k in en if k.split(".")[0] in {"uninstall", "undo", "delegate", "review"}):
+        assert set(re.findall(r"{(\w+)", en[key])) == set(re.findall(r"{(\w+)", es[key])), key

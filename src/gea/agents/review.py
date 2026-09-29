@@ -12,6 +12,7 @@ from pathlib import Path
 
 from gea import review_pack, ui
 from gea.agents import herdr, log, profiles
+from gea.i18n import t
 from gea.tasks import budget, store
 
 REVIEW_PROMPT_TEMPLATE = (
@@ -33,14 +34,14 @@ def review_task(task_id: str, agent_id: str | None = None) -> int:
     root = Path.cwd()
     task_path = store.find_task_path(task_id, root)
     if task_path is None:
-        ui.err(f"task not found: {task_id}")
+        ui.err(t("common.task_not_found", task_id=task_id))
         return 1
 
     builder_pool = last_builder_pool(task_id)
     exclude = (builder_pool,) if builder_pool else ()
     reviewer = profiles.pick_agent(agent_id, exclude_pools=exclude, repo_root=root)
     if reviewer is None:
-        ui.warn("no other agent available to review — review it yourself (gea review-pack)")
+        ui.warn(t("review.none"))
         return 1
 
     if review_pack.run_review_pack(task_id) != 0:
@@ -48,7 +49,7 @@ def review_task(task_id: str, agent_id: str | None = None) -> int:
     pack = store.task_root(root) / "review" / f"{task_id}.md"
 
     started = time.monotonic()
-    ui.info(f"{task_id}: reviewing with {reviewer.id} (implemented in pool {builder_pool})")
+    ui.info(t("review.start", task_id=task_id, agent=reviewer.id, pool=builder_pool))
     status = herdr.start_builder_pane(reviewer.id, reviewer.cli, reviewer.model, root)
     print(status)
     result = "error"
@@ -73,7 +74,7 @@ def review_task(task_id: str, agent_id: str | None = None) -> int:
         }
     )
     if result == "done":
-        ui.ok(f"review written into {task_path} (## Review)")
+        ui.ok(t("review.done", path=task_path))
         return 0
-    ui.err(f"review {result}")
+    ui.err(t("review.failed", result=result))
     return 1

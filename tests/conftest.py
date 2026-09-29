@@ -9,6 +9,7 @@ def isolated_machine(tmp_path_factory, monkeypatch):
     home = tmp_path_factory.mktemp("machine")
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("GEA_HOME", str(home / "gea"))
+    monkeypatch.setenv("GEA_LANG", "en")  # assertions read the English catalog
     dryrun.enable(False)
     yield
     dryrun.enable(False)

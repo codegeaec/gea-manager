@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from gea import checkpoint, proc, ui, verify
+from gea.i18n import t
 from gea.tasks import scope, store
 
 MAX_LINES_PER_FILE = 150
@@ -61,10 +62,10 @@ def run_review_pack(task_id: str) -> int:
     root = Path.cwd()
     content = build(task_id, root)
     if content is None:
-        ui.err(f"task not found: {task_id}")
+        ui.err(t("common.task_not_found", task_id=task_id))
         return 1
     target = store.task_root(root) / "review" / f"{task_id}.md"
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(content, encoding="utf-8")
-    ui.ok(f"review pack written: {target}")
+    ui.ok(t("pack.written", target=target))
     return 0

@@ -12,6 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from gea import config, proc, ui
+from gea.i18n import t
 
 
 def execute(command: str) -> tuple[bool, str]:
@@ -57,16 +58,16 @@ def run_verify(
     repo_root = repo_root or Path.cwd()
     commands = commands_for(repo_root, task_id)
     if commands is None:
-        ui.err(f"task not found: {task_id}")
+        ui.err(t("common.task_not_found", task_id=task_id))
         return 1
 
     if not commands:
-        ui.warn("no verify commands configured — run `gea init` or edit gea.json")
+        ui.warn(t("verify.none"))
         return 1
 
     failed = run_commands(commands, quiet=quiet)
     if failed:
-        ui.warn(f"{len(failed)} command(s) failed")
+        ui.warn(t("verify.failed", count=len(failed)))
         return 1
-    ui.ok(f"all {len(commands)} verify command(s) passed")
+    ui.ok(t("verify.passed", count=len(commands)))
     return 0

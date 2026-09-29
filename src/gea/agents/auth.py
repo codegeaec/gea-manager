@@ -18,6 +18,7 @@ from dataclasses import dataclass
 
 from gea import paths, platform, proc, ui
 from gea.agents import profiles, state
+from gea.i18n import t
 
 OK, NO_SESSION, UNKNOWN = "ok", "no_session", "unknown"
 CLIS = ("claude", "codex", "opencode", "agy", "kimi")
@@ -89,13 +90,13 @@ def collect() -> list[AgentAuth]:
 
 
 def print_report() -> None:
-    ui.info("agent sessions")
+    ui.info(t("auth.title"))
     for entry in collect():
         if entry.session == NO_SESSION:
-            ui.warn(f"{entry.cli}: no session — run `{LOGIN_HINTS[entry.cli]}`")
+            ui.warn(t("auth.no_session", cli=entry.cli, hint=LOGIN_HINTS[entry.cli]))
         elif entry.exhausted_until:
-            ui.warn(f"{entry.cli}: logged in, but out of tokens until {entry.exhausted_until}")
+            ui.warn(t("auth.no_tokens", cli=entry.cli, until=entry.exhausted_until))
         elif entry.session == OK:
-            ui.ok(f"{entry.cli}: session ok")
+            ui.ok(t("auth.ok", cli=entry.cli))
         else:
-            ui.warn(f"{entry.cli}: session state unknown (no CLI command to check it)")
+            ui.warn(t("auth.unknown", cli=entry.cli))

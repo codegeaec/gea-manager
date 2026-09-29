@@ -16,6 +16,7 @@ import json
 from pathlib import Path
 
 from gea import proc, ui
+from gea.i18n import t
 
 SNAPSHOT_REF = "refs/gea/checkpoints/{task_id}"
 HEAD_REF = "refs/gea/checkpoint-heads/{task_id}"
@@ -98,16 +99,16 @@ def run_undo(task_id: str, assume_yes: bool = False) -> int:
     root = Path.cwd()
     _, code = _git(root, "rev-parse", "--verify", HEAD_REF.format(task_id=task_id))
     if code != 0:
-        ui.err(f"no checkpoint for {task_id} — `gea delegate` takes one before each run")
+        ui.err(t("undo.none", task_id=task_id))
         return 1
     status, _ = _git(root, "status", "--short")
-    ui.info(f"gea undo {task_id} discards everything changed since the checkpoint:")
-    print(status or "  (working tree already clean)")
-    if not ui.ask_yes_no("Restore the checkpoint?", default=False, assume_yes=assume_yes):
-        ui.warn("aborted")
+    ui.info(t("undo.warning", task_id=task_id))
+    print(status or t("undo.clean"))
+    if not ui.ask_yes_no(t("undo.confirm"), default=False, assume_yes=assume_yes):
+        ui.warn(t("common.aborted"))
         return 1
     if not restore(task_id, root):
-        ui.err("restore failed")
+        ui.err(t("undo.failed"))
         return 1
-    ui.ok(f"restored the checkpoint of {task_id}")
+    ui.ok(t("undo.done", task_id=task_id))
     return 0

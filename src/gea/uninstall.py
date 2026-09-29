@@ -14,6 +14,7 @@ from datetime import datetime
 from pathlib import Path
 
 from gea import dryrun, manifest, paths, proc, ui
+from gea.i18n import t
 from gea.setup import global_instructions
 
 
@@ -23,12 +24,14 @@ def _backup_dir() -> Path:
 
 
 def _plan(purge: bool) -> list[str]:
-    plan = [f"remove the gea block from {p}" for p in manifest.of_kind(manifest.KIND_INSTRUCTIONS)]
+    plan = [
+        t("uninstall.plan_block", path=p) for p in manifest.of_kind(manifest.KIND_INSTRUCTIONS)
+    ]
     skills = manifest.of_kind(manifest.KIND_SKILL)
     if skills:
-        plan.append(f"remove skills: {', '.join(skills)}")
+        plan.append(t("uninstall.plan_skills", names=", ".join(skills)))
     if purge:
-        plan.append(f"delete {paths.gea_home()} (config, state, tasks)")
+        plan.append(t("uninstall.plan_purge", path=paths.gea_home()))
     return plan
 
 
@@ -44,16 +47,16 @@ def run_uninstall(assume_yes: bool = False, purge: bool = False, dry_run: bool =
     dryrun.enable(dry_run)
     plan = _plan(purge)
     if not plan:
-        ui.ok("nothing recorded by `gea setup` — nothing to uninstall")
+        ui.ok(t("uninstall.nothing"))
         return 0
 
-    ui.info("gea uninstall will:")
+    ui.info(t("uninstall.will"))
     for line in plan:
         print(f"  - {line}")
     if dry_run:
         return 0
-    if not ui.ask_yes_no("Continue? (backups go to ~/gea-uninstall-backup-*)", False, assume_yes):
-        ui.warn("aborted")
+    if not ui.ask_yes_no(t("uninstall.confirm"), False, assume_yes):
+        ui.warn(t("common.aborted"))
         return 1
 
     backup = _backup_dir()
@@ -62,20 +65,20 @@ def run_uninstall(assume_yes: bool = False, purge: bool = False, dry_run: bool =
         if path.exists():
             _backup_file(path, backup)
         if global_instructions.remove_from_file(path):
-            ui.ok(f"gea block removed from {path}")
+            ui.ok(t("uninstall.block_removed", path=path))
 
     skills = manifest.of_kind(manifest.KIND_SKILL)
     if skills:
         code = proc.run_visible(["npx", "skills", "remove", "-g", "-y", *skills], timeout=120)
-        (ui.ok if code == 0 else ui.warn)(f"skills removal exit code {code}")
+        (ui.ok if code == 0 else ui.warn)(t("uninstall.skills_exit", code=code))
 
     if purge and paths.gea_home().exists():
         shutil.copytree(paths.gea_home(), backup / "gea", dirs_exist_ok=True)
         shutil.rmtree(paths.gea_home())
-        ui.ok(f"{paths.gea_home()} removed")
+        ui.ok(t("uninstall.home_removed", path=paths.gea_home()))
     else:
         # Keep the manifest honest: what it listed has now been reverted.
         (paths.gea_home() / "manifest.json").unlink(missing_ok=True)
 
-    ui.ok(f"gea uninstall complete (backup: {backup})")
+    ui.ok(t("uninstall.done", backup=backup))
     return 0

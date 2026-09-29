@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from gea import dryrun, proc, ui
+from gea.i18n import t
 
 ALLOW_MARKER = "gea:allow-secret"
 HOOK_MARKER = "# gea:secret-scan"
@@ -76,13 +77,13 @@ def run_scan(repo_root: Path | None = None) -> int:
     root = str(repo_root or Path.cwd())
     out, err, code = proc.run(["git", "-C", root, "diff", "--cached", "-U0", "--no-color"])
     if code != 0:
-        ui.err(f"git diff failed: {err.strip()}")
+        ui.err(t("secrets.git_failed", error=err.strip()))
         return 1
     findings = scan_diff(out)
     for f in findings:
-        ui.err(f"{f.path}:{f.line}: possible {f.rule}")
+        ui.err(t("secrets.finding", path=f.path, line=f.line, rule=f.rule))
     if findings:
-        ui.warn(f"commit blocked — mark false positives with `{ALLOW_MARKER}` or use --no-verify")
+        ui.warn(t("secrets.blocked", marker=ALLOW_MARKER))
         return 1
     return 0
 
