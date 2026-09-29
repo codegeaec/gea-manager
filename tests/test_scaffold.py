@@ -64,6 +64,7 @@ def test_write_agents_dir_writes_all_files(tmp_path):
         ".agents/commit-conventions.md",
         ".agents/gotchas.md",
         ".agents/builder.md",
+        ".agents/orchestrator.md",
     }
     builder = (tmp_path / ".agents" / "builder.md").read_text(encoding="utf-8")
     assert "ponytail" in builder.lower()
@@ -123,3 +124,10 @@ def test_update_gitignore_idempotent(tmp_path):
     scaffold.update_gitignore(tmp_path, "home")
     changed_again = scaffold.update_gitignore(tmp_path, "home")
     assert changed_again is False
+
+
+def test_claude_md_imports_the_shared_orchestrator_instructions(tmp_path):
+    scaffold.write_claude_md(tmp_path, "en", "demo", "x")
+    scaffold.write_agents_dir(tmp_path, "en", "demo", "en", False, "x")
+    assert "@.agents/orchestrator.md" in (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
+    assert "gea handoff" in (tmp_path / ".agents" / "orchestrator.md").read_text(encoding="utf-8")

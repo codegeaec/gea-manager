@@ -7,4 +7,5 @@ summarizes the hard rules; this is where the detail lives.
 |---|---|
 | [`commit-conventions.md`](./commit-conventions.md) | Commit format, atomicity, scopes |
 | [`builder.md`](./builder.md) | Instructions for whichever agent implements a task |
+| [`orchestrator.md`](./orchestrator.md) | Instructions for whichever agent plans, delegates and reviews |
 | [`gotchas.md`](./gotchas.md) | Concrete problems already solved |

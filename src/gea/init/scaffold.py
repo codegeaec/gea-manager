@@ -116,6 +116,10 @@ def write_agents_dir(
     if _write_if_missing(agents_dir / "gotchas.md", gotchas):
         written.append(".agents/gotchas.md")
 
+    orchestrator = _read_template(lang, "agents/orchestrator.md")
+    if _write_if_missing(agents_dir / "orchestrator.md", orchestrator):
+        written.append(".agents/orchestrator.md")
+
     ponytail_section = _ponytail_section(lang) if ponytail else ""
     builder = _read_template(lang, "agents/builder.md").format(
         project_name=project_name,
