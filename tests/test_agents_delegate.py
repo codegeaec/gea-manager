@@ -56,14 +56,16 @@ def _delegate_with_fakes(tmp_path, monkeypatch, start_status, prompt_result):
     store.create_task("Something", repo_root=repo)
     monkeypatch.setattr(delegate.checkpoint, "create", lambda *_: False)
     monkeypatch.setattr(delegate.herdr, "start_builder_pane", lambda *a: start_status)
-    monkeypatch.setattr(delegate.herdr, "prompt_pane", lambda *a, **k: prompt_result)
+    monkeypatch.setattr(delegate.herdr, "prompt_result", lambda *a, **k: prompt_result)
+    monkeypatch.setattr(delegate.herdr, "read_pane", lambda *a, **k: "last words")
     return delegate.delegate_task("TASK-001")
 
 
 def test_delegate_logs_a_successful_attempt(tmp_path, monkeypatch):
     from gea.agents import log
 
-    assert _delegate_with_fakes(tmp_path, monkeypatch, "started builder-codex", ("ok", 0)) == 0
+    code = _delegate_with_fakes(tmp_path, monkeypatch, "started builder-codex", ("ok", 0, None))
+    assert code == 0
     entry = log.last_for_task("TASK-001")
     assert entry["result"] == "done" and entry["agent_id"] == "codex" and entry["round"] == 1
 
@@ -71,5 +73,16 @@ def test_delegate_logs_a_successful_attempt(tmp_path, monkeypatch):
 def test_delegate_logs_blocked_start(tmp_path, monkeypatch):
     from gea.agents import log
 
-    assert _delegate_with_fakes(tmp_path, monkeypatch, "BLOCKED builder-codex", ("", 0)) == 1
+    assert _delegate_with_fakes(tmp_path, monkeypatch, "BLOCKED builder-codex", ("", 0, None)) == 1
     assert log.last_for_task("TASK-001")["result"] == "blocked"
+
+
+def test_delegate_timeout_is_logged_and_noted_in_the_task(tmp_path, monkeypatch):
+    from gea.agents import log
+    from gea.tasks import store
+
+    code = _delegate_with_fakes(tmp_path, monkeypatch, "started builder-codex", ("", 1, "timeout"))
+    assert code == 1
+    assert log.last_for_task("TASK-001")["result"] == "timeout"
+    notes = store.find_task_path("TASK-001", tmp_path / "repo").read_text(encoding="utf-8")
+    assert "last words" in notes and "budget" in notes

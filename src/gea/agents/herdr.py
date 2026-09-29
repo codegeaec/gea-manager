@@ -149,10 +149,28 @@ def read_pane(pane_name: str, lines: int = 40) -> str:
 
 
 def prompt_pane(
-    pane_name: str, message: str, wait: bool = True, timeout: int = 300
+    pane_name: str, message: str, wait: bool = True, budget_s: int = 1800
 ) -> tuple[str, int]:
+    """Send `message` to the pane. With `wait`, herdr itself enforces
+    `budget_s` (--timeout, ms) so a long build is cut cleanly by herdr
+    instead of gea's subprocess timeout killing the wait mid-flight."""
+    out, code, _error = prompt_result(pane_name, message, wait, budget_s)
+    return out, code
+
+
+def prompt_result(
+    pane_name: str, message: str, wait: bool = True, budget_s: int = 1800
+) -> tuple[str, int, str | None]:
+    """Like `prompt_pane`, plus herdr's error code (`timeout`, `agent_blocked`,
+    `agent_prompt_stalled`, ...) parsed from its stderr JSON, or None."""
     cmd = ["herdr", "agent", "prompt", pane_name, message]
     if wait:
-        cmd.append("--wait")
-    out, _err, code = proc.run(cmd, timeout=timeout)
-    return out, code
+        cmd += ["--wait", "--timeout", str(budget_s * 1000)]
+    out, err, code = proc.run(cmd, timeout=budget_s + 30)
+    error = None
+    if code != 0:
+        try:
+            error = (json.loads(err).get("error") or {}).get("code", "unknown_error")
+        except (json.JSONDecodeError, AttributeError):
+            error = "unknown_error"
+    return out, code, error

@@ -11,6 +11,8 @@ from pathlib import Path
 
 from gea import autonomy, checkpoint, config, ui
 from gea.agents import herdr, log, profiles, state
+from gea.tasks import budget as budget_mod
+from gea.tasks import store
 from gea.tasks.store import find_task_path
 
 # Fixed instructions first, variable parts (task, autonomy) last: the stable
@@ -84,7 +86,19 @@ def delegate_task(task_id: str, agent_id: str | None = None) -> int:
         task_path=task_path,
         autonomy_line=autonomy.describe(cfg.get("autonomy"), cfg.get("lang", {}).get("docs", "en")),
     )
-    out, code = herdr.prompt_pane(pane_name, prompt, wait=True)
+    budget = budget_mod.seconds_for(task_path, Path.cwd())
+    out, code, error = herdr.prompt_result(pane_name, prompt, wait=True, budget_s=budget)
     print(out)
-    record("done" if code == 0 else "error")
+    if error == "timeout":
+        tail = herdr.read_pane(pane_name)
+        store.append_to_section(
+            task_path,
+            "Implementation Notes",
+            f"gea: builder `{agent.id}` hit the {budget // 60} min budget; "
+            f"last output:\n\n```\n{tail.strip()}\n```",
+        )
+        ui.warn(f"budget of {budget // 60} min exceeded — the builder pane was left running")
+        record("timeout")
+        return 1
+    record("done" if code == 0 else ("blocked" if error == "agent_blocked" else "error"))
     return 0 if code == 0 else 1

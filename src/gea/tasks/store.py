@@ -131,11 +131,31 @@ def find_task_path(task_id: str, repo_root: Path | None = None) -> Path | None:
     return None
 
 
-def read_status(path: Path) -> str | None:
+def read_header(path: Path, key: str) -> str | None:
+    """Value of a `Key: value` line in the task's header (before the first `## `)."""
     for line in path.read_text(encoding="utf-8").splitlines():
-        if line.startswith("Status:"):
-            return line.split(":", 1)[1].strip()
+        if line.startswith("## "):
+            break
+        if line.startswith(f"{key}:"):
+            return line.split(":", 1)[1].strip() or None
     return None
+
+
+def read_status(path: Path) -> str | None:
+    return read_header(path, "Status")
+
+
+def append_to_section(path: Path, heading: str, text: str) -> None:
+    """Append `text` at the end of the task's `## <heading>` section."""
+    content = path.read_text(encoding="utf-8")
+    match = re.search(rf"^## {re.escape(heading)}[ \t]*\n.*?(?=^## |\Z)", content, re.M | re.S)
+    block = text.rstrip("\n") + "\n\n"
+    if match:
+        body = match.group(0).rstrip("\n") + "\n\n" + block
+        content = content[: match.start()] + body + content[match.end() :]
+    else:
+        content = content.rstrip("\n") + f"\n\n## {heading}\n\n" + block
+    path.write_text(content, encoding="utf-8")
 
 
 def set_status(task_id: str, new_status: str, repo_root: Path | None = None) -> bool:
