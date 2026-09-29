@@ -61,7 +61,7 @@ def _delegate_with_fakes(tmp_path, monkeypatch, start_status, prompt_result):
     monkeypatch.setattr(delegate.herdr, "notify", lambda *a, **k: notified.append(a))
     monkeypatch.setattr(delegate.checkpoint, "changed_files", lambda *a: ["x.py"])
     monkeypatch.setattr(delegate.verify, "run_verify", lambda *a, **k: 0)
-    monkeypatch.setattr(delegate.herdr, "start_builder_pane", lambda *a: start_status)
+    monkeypatch.setattr(delegate.herdr, "start_agent_pane", lambda *a: start_status)
     monkeypatch.setattr(delegate.herdr, "prompt_result", lambda *a, **k: prompt_result)
     monkeypatch.setattr(delegate.herdr, "read_pane", lambda *a, **k: "last words")
     return delegate.delegate_task("TASK-001")
@@ -111,7 +111,7 @@ def test_delegate_flags_files_outside_the_declared_scope(tmp_path, monkeypatch):
     monkeypatch.setattr(delegate.checkpoint, "create", lambda *_: False)
     monkeypatch.setattr(delegate.checkpoint, "changed_files", lambda *_: ["src/a.py", "oops.py"])
     monkeypatch.setattr(delegate.herdr, "notify", lambda *a, **k: True)
-    monkeypatch.setattr(delegate.herdr, "start_builder_pane", lambda *a: "started")
+    monkeypatch.setattr(delegate.herdr, "start_agent_pane", lambda *a: "started")
     monkeypatch.setattr(delegate.herdr, "prompt_result", lambda *a, **k: ("", 0, None))
     assert delegate.delegate_task("TASK-001") == 0
     assert log.last_for_task("TASK-001")["files_out_of_scope"] == 1
@@ -139,7 +139,7 @@ def test_reused_pane_gets_a_fresh_session_only_for_a_different_task(tmp_path, mo
     assert cleared == [("builder-codex", "codex")]
 
     cleared.clear()  # a correction round of the same task keeps the session
-    monkeypatch.setattr(delegate.herdr, "start_builder_pane", lambda *a: "reused existing pane")
+    monkeypatch.setattr(delegate.herdr, "start_agent_pane", lambda *a: "reused existing pane")
     delegate.delegate_task("TASK-001")
     assert cleared == []
 

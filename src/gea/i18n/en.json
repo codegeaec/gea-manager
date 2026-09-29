@@ -83,5 +83,10 @@
   "prune.header": "{count} skill(s) not installed by gea (largest first):",
   "prune.ask": "Remove {name} (~{tokens} tokens)?",
   "prune.failed": "removal failed",
-  "prune.removed": "removed: {names}"
+  "prune.removed": "removed: {names}",
+  "delegate.worktree": "  branch: {branch} in {path} (review, then merge it)",
+  "delegate.worktree_failed": "could not create the worktree — nothing was left behind",
+  "worktree.remove": "Remove the worktree of {task_id} ({path})? The branch is kept.",
+  "worktree.removed": "worktree of {task_id} removed",
+  "worktree.remove_failed": "could not remove the worktree at {path}"
 }

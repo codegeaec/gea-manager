@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 from gea import autonomy, checkpoint, config, ui, verify
-from gea.agents import herdr, log, profiles
+from gea.agents import herdr, log, profiles, worktree
 from gea.i18n import t
 from gea.tasks import budget as budget_mod
 from gea.tasks import scope, store
@@ -27,11 +27,16 @@ BUILDER_PROMPT_TEMPLATE = (
 )
 
 
-def _check_scope(task_id: str, task_path: Path) -> list[str]:
+def _changed(task_id: str, wt: worktree.Worktree | None) -> list[str]:
+    if wt:
+        return worktree.changed_files(wt)
+    return checkpoint.changed_files(task_id) or []
+
+
+def _check_scope(task_id: str, task_path: Path, wt: worktree.Worktree | None) -> list[str]:
     """Warn (and note in the task's Review) about files outside `## Files`."""
-    files = checkpoint.changed_files(task_id)
     patterns = scope.allowed_patterns(task_path.read_text(encoding="utf-8"))
-    stray = scope.out_of_scope(files or [], patterns)
+    stray = scope.out_of_scope(_changed(task_id, wt), patterns)
     if stray:
         ui.warn(t("delegate.stray", count=len(stray), files=", ".join(stray)))
         store.append_to_section(
@@ -43,17 +48,21 @@ def _check_scope(task_id: str, task_path: Path) -> list[str]:
     return stray
 
 
-def _print_summary(task_id, agent_id, started, task_path, stray, verify_ok) -> None:
+def _print_summary(task_id, agent_id, started, task_path, stray, verify_ok, wt) -> None:
     """The orchestrator reads this instead of the builder's raw terminal output."""
     minutes, seconds = divmod(round(time.monotonic() - started), 60)
     ui.ok(t("delegate.done", task_id=task_id, agent=agent_id, minutes=minutes, seconds=seconds))
-    files = checkpoint.changed_files(task_id) or []
-    print(t("delegate.files", changed=len(files), stray=len(stray)))
+    print(t("delegate.files", changed=len(_changed(task_id, wt)), stray=len(stray)))
     print(t("delegate.verify_ok") if verify_ok else t("delegate.verify_bad", task_id=task_id))
     print(t("delegate.task_line", path=task_path))
+    if wt:
+        print(t("delegate.worktree", branch=wt.branch, path=wt.path))
 
 
-def delegate_task(task_id: str, agent_id: str | None = None) -> int:
+def delegate_task(
+    task_id: str, agent_id: str | None = None, use_worktree: bool | None = None
+) -> int:
+    root = Path.cwd()
     task_path = find_task_path(task_id)
     if task_path is None:
         ui.err(t("common.task_not_found", task_id=task_id))
@@ -67,7 +76,16 @@ def delegate_task(task_id: str, agent_id: str | None = None) -> int:
         ui.warn(t("delegate.no_agent"))
         return 1
 
-    if checkpoint.create(task_id):
+    cfg = config.load_project(root)
+    if use_worktree is None:
+        use_worktree = bool(cfg.get("builders", {}).get("worktrees"))
+    wt = None
+    if use_worktree:
+        wt = worktree.create(task_id, root)
+        if wt is None:
+            ui.err(t("delegate.worktree_failed"))
+            return 1
+    elif checkpoint.create(task_id):
         ui.info(t("delegate.checkpoint", task_id=task_id))
     ui.info(t("delegate.delegating", task_id=task_id, agent=agent.id, cli=agent.cli))
     started = time.monotonic()
@@ -76,46 +94,51 @@ def delegate_task(task_id: str, agent_id: str | None = None) -> int:
     def record(
         result: str, stray: list[str] | None = None, verify_ok: bool | None = None
     ) -> None:
-        log.append(
-            {
-                "project": Path.cwd().name,
-                "kind": "build",
-                "tier": tier,
-                "task_id": task_id,
-                "agent_id": agent.id,
-                "pool": agent.pool,
-                "result": result,
-                "duration_s": round(time.monotonic() - started),
-                "round": attempt,
-                "files_out_of_scope": len(stray or []),
-                "verify_ok": verify_ok,
+        entry = {
+            "kind": "build",
+            "tier": tier,
+            "project": root.name,
+            "task_id": task_id,
+            "agent_id": agent.id,
+            "pool": agent.pool,
+            "result": result,
+            "duration_s": round(time.monotonic() - started),
+            "round": attempt,
+            "files_out_of_scope": len(stray or []),
+            "verify_ok": verify_ok,
+        }
+        if wt:
+            entry |= {
+                "worktree": str(wt.path), "branch": wt.branch, "base": wt.base,
+                "workspace_id": wt.workspace_id,
             }
-        )
+        log.append(entry)
         herdr.notify(
             f"{task_id}: {result}",
             f"{agent.id} finished in {round(time.monotonic() - started)}s",
             sound="done" if result == "done" else "request",
         )
 
-    status = herdr.start_builder_pane(agent.id, agent.cli, agent.model, Path.cwd())
+    pane_name = wt.pane_name if wt else f"builder-{agent.id}"
+    status = herdr.start_agent_pane(pane_name, agent.cli, agent.model, wt.path if wt else root)
     print(status)
     if status.startswith("BLOCKED") or "FAILED" in status or "!=" in status:
+        if wt:  # a worktree gea just created must not be left half-used
+            worktree.remove(wt, root, force=True)
         record("blocked" if status.startswith("BLOCKED") else "error")
         return 1
 
-    pane_name = f"builder-{agent.id}"
     previous = log.last_build_for_agent(agent.id)
     if "reus" in status and previous and previous.get("task_id") != task_id:
         # A reused pane still holds the previous task's context: drop it.
         if herdr.clear_session(pane_name, agent.cli):
             ui.info(t("delegate.fresh", pane=pane_name, previous=previous.get("task_id")))
-    cfg = config.load_project(Path.cwd())
     prompt = BUILDER_PROMPT_TEMPLATE.format(
         task_id=task_id,
         task_path=task_path,
         autonomy_line=autonomy.describe(cfg.get("autonomy"), cfg.get("lang", {}).get("docs", "en")),
     )
-    budget = budget_mod.seconds_for(task_path, Path.cwd())
+    budget = budget_mod.seconds_for(task_path, root)
     out, code, error = herdr.prompt_result(pane_name, prompt, wait=True, budget_s=budget)
     if error == "timeout":
         tail = herdr.read_pane(pane_name)
@@ -132,8 +155,10 @@ def delegate_task(task_id: str, agent_id: str | None = None) -> int:
         print("\n".join(out.strip().splitlines()[-5:]))
         record("blocked" if error == "agent_blocked" else "error")
         return 1
-    stray = _check_scope(task_id, task_path)
-    verify_ok = verify.run_verify(Path.cwd(), task_id, quiet=True) == 0
+    stray = _check_scope(task_id, task_path, wt)
+    verify_ok = verify.run_verify(root, task_id, quiet=True, cwd=wt.path if wt else None) == 0
+    if wt:
+        worktree.commit_all(wt, f"wip({task_id}): builder output")
     record("done", stray, verify_ok)
-    _print_summary(task_id, agent.id, started, task_path, stray, verify_ok)
+    _print_summary(task_id, agent.id, started, task_path, stray, verify_ok, wt)
     return 0

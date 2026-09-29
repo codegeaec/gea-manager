@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from gea import checkpoint, proc, ui, verify
+from gea.agents import worktree
 from gea.i18n import t
 from gea.tasks import scope, store
 
@@ -35,8 +36,12 @@ def build(task_id: str, root: Path) -> str | None:
     if task_path is None:
         return None
     task_text = task_path.read_text(encoding="utf-8")
-    base = checkpoint.base_ref(task_id, root)
-    files = checkpoint.changed_files(task_id, root)
+    wt = worktree.lookup(task_id)
+    if wt and not wt.path.is_dir():
+        wt = None
+    git_root = wt.path if wt else root  # a worktree build is reviewed where it lives
+    base = wt.base if wt else checkpoint.base_ref(task_id, root)
+    files = worktree.changed_files(wt) if wt else checkpoint.changed_files(task_id, root)
     if files is None:
         out, _e, _c = proc.run(["git", "-C", str(root), "diff", "--name-only", "HEAD"])
         files = out.split()
@@ -48,13 +53,13 @@ def build(task_id: str, root: Path) -> str | None:
 
     parts += ["## Verify", ""]
     for command in verify.commands_for(root, task_id) or []:
-        passed, tail = verify.execute(command)
+        passed, tail = verify.execute(command, wt.path if wt else None)
         parts.append(f"- {'PASS' if passed else 'FAIL'} `{command}`")
         if not passed:
             parts += ["", "```", tail, "```", ""]
     parts += ["", f"## Diff ({len(files)} file(s))", ""]
     for f in files:
-        parts += [f"### {f}", "", "```diff", _diff_for(root, base, f), "```", ""]
+        parts += [f"### {f}", "", "```diff", _diff_for(git_root, base, f), "```", ""]
     return "\n".join(parts)
 
 

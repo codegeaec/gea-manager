@@ -9,15 +9,17 @@ same runner.
 
 from __future__ import annotations
 
+import shlex
 from pathlib import Path
 
 from gea import config, proc, ui
 from gea.i18n import t
 
 
-def execute(command: str) -> tuple[bool, str]:
-    """Run one command through bash. Returns (passed, last 20 output lines)."""
-    out, err, code = proc.run(["bash", "-c", command], timeout=300)
+def execute(command: str, cwd: Path | None = None) -> tuple[bool, str]:
+    """Run one command through bash (in `cwd` if given). Returns (passed, last 20 lines)."""
+    script = f"cd {shlex.quote(str(cwd))} && {command}" if cwd else command
+    out, err, code = proc.run(["bash", "-c", script], timeout=300)
     return code == 0, "\n".join((out + err).strip().splitlines()[-20:])
 
 
@@ -35,12 +37,12 @@ def commands_for(repo_root: Path, task_id: str | None = None) -> list[str] | Non
     return commands
 
 
-def run_commands(commands: list[str], quiet: bool = False) -> list[str]:
+def run_commands(commands: list[str], quiet: bool = False, cwd: Path | None = None) -> list[str]:
     """Run each command through bash, printing pass/fail (only failures when
     `quiet`). Returns the failed ones."""
     failed = []
     for command in commands:
-        passed, tail = execute(command)
+        passed, tail = execute(command, cwd)
         if passed:
             if not quiet:
                 ui.ok(command)
@@ -53,7 +55,10 @@ def run_commands(commands: list[str], quiet: bool = False) -> list[str]:
 
 
 def run_verify(
-    repo_root: Path | None = None, task_id: str | None = None, quiet: bool = False
+    repo_root: Path | None = None,
+    task_id: str | None = None,
+    quiet: bool = False,
+    cwd: Path | None = None,
 ) -> int:
     repo_root = repo_root or Path.cwd()
     commands = commands_for(repo_root, task_id)
@@ -65,7 +70,7 @@ def run_verify(
         ui.warn(t("verify.none"))
         return 1
 
-    failed = run_commands(commands, quiet=quiet)
+    failed = run_commands(commands, quiet=quiet, cwd=cwd)
     if failed:
         ui.warn(t("verify.failed", count=len(failed)))
         return 1

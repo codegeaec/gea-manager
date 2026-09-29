@@ -108,6 +108,12 @@ def _build_parser() -> argparse.ArgumentParser:
     delegate_parser = subparsers.add_parser("delegate", help="delegate a task to a builder")
     delegate_parser.add_argument("task_id")
     delegate_parser.add_argument("--agent", default=None)
+    delegate_parser.add_argument(
+        "--worktree",
+        action="store_true",
+        default=None,
+        help="run the builder in its own git worktree",
+    )
 
     skills_parser = subparsers.add_parser("skills", help="manage global gea skills")
     skills_sub = skills_parser.add_subparsers(dest="skills_command")
@@ -227,7 +233,7 @@ def _main(argv: list[str] | None = None) -> int:
     if args.command == "delegate":
         from gea.agents.delegate import delegate_task
 
-        return delegate_task(args.task_id, agent_id=args.agent)
+        return delegate_task(args.task_id, agent_id=args.agent, use_worktree=args.worktree)
 
     if args.command == "skills":
         from gea.setup.skills import dispatch_skills

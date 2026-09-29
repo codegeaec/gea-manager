@@ -38,7 +38,7 @@ def test_verify_task_runs_acceptance_commands(repo, monkeypatch):
     path = store.create_task("A", repo_root=repo)
     path.write_text(path.read_text().replace("- [ ] \n", "- [ ] `echo hi`\n", 1))
     ran = []
-    monkeypatch.setattr(verify, "run_commands", lambda cmds, quiet=False: ran.extend(cmds) or [])
+    monkeypatch.setattr(verify, "run_commands", lambda cmds, **kw: ran.extend(cmds) or [])
     monkeypatch.chdir(repo)
     assert verify.run_verify(repo, task_id="TASK-001") == 0
     assert ran == ["echo hi"]
