@@ -83,6 +83,10 @@ def _build_parser() -> argparse.ArgumentParser:
     handoff_parser.add_argument("--to", choices=["claude", "codex", "opencode", "agy", "kimi"])
     handoff_parser.add_argument("--yes", action="store_true", help="skip the primary-agent prompt")
 
+    pr_parser = subparsers.add_parser("pr", help="open a GitHub PR from a task")
+    pr_parser.add_argument("task_id")
+    pr_parser.add_argument("--yes", action="store_true", help="skip the confirmation")
+
     subparsers.add_parser("status", help="active tasks, gea panes and exhausted pools")
 
     subparsers.add_parser("scan-secrets", help="scan staged changes for secrets (pre-commit)")
@@ -198,6 +202,11 @@ def _main(argv: list[str] | None = None) -> int:
         from gea.verify import run_verify
 
         return run_verify(task_id=args.task, quiet=args.quiet)
+
+    if args.command == "pr":
+        from gea.pr import run_pr
+
+        return run_pr(args.task_id, assume_yes=args.yes)
 
     if args.command == "status":
         from gea.status import run_status

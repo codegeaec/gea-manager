@@ -96,5 +96,7 @@
   "status.exhausted": "pools agotados (hasta)",
   "status.none": "(ninguno)",
   "task.title_required": "pasá un título o usá --from-issue",
-  "task.issue_failed": "no se pudo leer el issue #{number}: {error}"
+  "task.issue_failed": "no se pudo leer el issue #{number}: {error}",
+  "pr.confirm": "¿Crear este pull request en GitHub?",
+  "pr.failed": "falló `gh pr create`"
 }
