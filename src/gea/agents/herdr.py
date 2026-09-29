@@ -56,6 +56,11 @@ def herdr_json(cmd: list[str], timeout: int = 15) -> tuple[dict[str, Any], str |
 def start_builder_pane(agent_id: str, cli: str, model: str | None, cwd: Path) -> str:
     """Start (or reuse) the `builder-<agent_id>` pane. Returns a short
     human-readable status line, same convention as `gea agents start`."""
+    return start_agent_pane(f"builder-{agent_id}", cli, model, cwd)
+
+
+def start_agent_pane(pane_name: str, cli: str, model: str | None, cwd: Path) -> str:
+    """Start (or reuse) a pane named `pane_name` running `cli`."""
     if os.environ.get("HERDR_ENV") != "1":
         return "HERDR_ENV != 1 — this must run inside a herdr pane"
     caller_pane = os.environ.get("HERDR_PANE_ID")
@@ -63,7 +68,6 @@ def start_builder_pane(agent_id: str, cli: str, model: str | None, cwd: Path) ->
     if not caller_pane or not workspace_id:
         return "missing HERDR_PANE_ID/HERDR_WORKSPACE_ID in the environment"
 
-    pane_name = f"builder-{agent_id}"
     existing, _err = herdr_json(["agent", "get", pane_name])
     if existing:
         return f"pane {pane_name} already exists, reusing it"
