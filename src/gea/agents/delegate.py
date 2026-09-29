@@ -12,7 +12,7 @@ from pathlib import Path
 from gea import autonomy, checkpoint, config, ui
 from gea.agents import herdr, log, profiles, state
 from gea.tasks import budget as budget_mod
-from gea.tasks import store
+from gea.tasks import scope, store
 from gea.tasks.store import find_task_path
 
 # Fixed instructions first, variable parts (task, autonomy) last: the stable
@@ -43,6 +43,22 @@ def _pick_agent(agent_id: str | None) -> profiles.AgentProfile | None:
     return ranked[0] if ranked else None
 
 
+def _check_scope(task_id: str, task_path: Path) -> list[str]:
+    """Warn (and note in the task's Review) about files outside `## Files`."""
+    files = checkpoint.changed_files(task_id)
+    patterns = scope.allowed_patterns(task_path.read_text(encoding="utf-8"))
+    stray = scope.out_of_scope(files or [], patterns)
+    if stray:
+        ui.warn(f"{len(stray)} file(s) touched outside the task's ## Files: {', '.join(stray)}")
+        store.append_to_section(
+            task_path,
+            "Review",
+            "important: builder touched files outside `## Files`:\n"
+            + "\n".join(f"- `{f}`" for f in stray),
+        )
+    return stray
+
+
 def delegate_task(task_id: str, agent_id: str | None = None) -> int:
     task_path = find_task_path(task_id)
     if task_path is None:
@@ -60,7 +76,7 @@ def delegate_task(task_id: str, agent_id: str | None = None) -> int:
     started = time.monotonic()
     attempt = len(log.read(task_id=task_id)) + 1
 
-    def record(result: str) -> None:
+    def record(result: str, stray: list[str] | None = None) -> None:
         log.append(
             {
                 "project": Path.cwd().name,
@@ -70,6 +86,7 @@ def delegate_task(task_id: str, agent_id: str | None = None) -> int:
                 "result": result,
                 "duration_s": round(time.monotonic() - started),
                 "round": attempt,
+                "files_out_of_scope": len(stray or []),
             }
         )
         herdr.notify(
@@ -105,5 +122,6 @@ def delegate_task(task_id: str, agent_id: str | None = None) -> int:
         ui.warn(f"budget of {budget // 60} min exceeded — the builder pane was left running")
         record("timeout")
         return 1
-    record("done" if code == 0 else ("blocked" if error == "agent_blocked" else "error"))
+    stray = _check_scope(task_id, task_path)
+    record("done" if code == 0 else ("blocked" if error == "agent_blocked" else "error"), stray)
     return 0 if code == 0 else 1

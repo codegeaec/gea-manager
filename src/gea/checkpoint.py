@@ -26,7 +26,7 @@ def _git(root: Path, *args: str) -> tuple[str, int]:
     return out.strip(), code
 
 
-def _untracked(root: Path) -> list[str]:
+def untracked(root: Path) -> list[str]:
     out, _code = _git(root, "ls-files", "--others", "--exclude-standard")
     return out.splitlines()
 
@@ -47,8 +47,24 @@ def create(task_id: str, repo_root: Path | None = None) -> bool:
     _git(root, "update-ref", HEAD_REF.format(task_id=task_id), head)
     meta = _meta_path(root, task_id)
     meta.parent.mkdir(parents=True, exist_ok=True)
-    meta.write_text(json.dumps({"untracked": _untracked(root)}), encoding="utf-8")
+    meta.write_text(json.dumps({"untracked": untracked(root)}), encoding="utf-8")
     return True
+
+
+def changed_files(task_id: str, repo_root: Path | None = None) -> list[str] | None:
+    """Files changed since the checkpoint (tracked edits vs. the snapshot, plus
+    untracked files that did not exist then). None if there is no checkpoint."""
+    root = repo_root or Path.cwd()
+    snapshot, code = _git(root, "rev-parse", "--verify", SNAPSHOT_REF.format(task_id=task_id))
+    if code != 0:
+        return None
+    diff, _ = _git(root, "diff", "--name-only", snapshot)
+    changed = set(diff.splitlines())
+    meta = _meta_path(root, task_id)
+    if meta.exists():
+        before = set(json.loads(meta.read_text(encoding="utf-8"))["untracked"])
+        changed |= set(untracked(root)) - before
+    return sorted(changed)
 
 
 def restore(task_id: str, repo_root: Path | None = None) -> bool:
@@ -66,7 +82,7 @@ def restore(task_id: str, repo_root: Path | None = None) -> bool:
     if snapshot != head:
         _git(root, "stash", "apply", snapshot)
     if before is not None:
-        for name in set(_untracked(root)) - before:
+        for name in set(untracked(root)) - before:
             (root / name).unlink(missing_ok=True)
     return True
 

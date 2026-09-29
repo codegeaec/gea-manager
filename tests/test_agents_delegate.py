@@ -96,3 +96,21 @@ def test_delegate_notifies_when_the_builder_finishes(tmp_path, monkeypatch):
     notified.clear()
     _delegate_with_fakes(tmp_path, monkeypatch, "started builder-codex", ("ok", 0, None))
     assert notified and notified[0][0] == "TASK-001: done"
+
+
+def test_delegate_flags_files_outside_the_declared_scope(tmp_path, monkeypatch):
+    from gea.agents import log
+    from gea.tasks import store
+
+    repo = _seed(tmp_path, monkeypatch)
+    monkeypatch.chdir(repo)
+    path = store.create_task("Scoped", repo_root=repo)
+    path.write_text(path.read_text().replace("## Files\n", "## Files\n\n- `src/a.py`\n", 1))
+    monkeypatch.setattr(delegate.checkpoint, "create", lambda *_: False)
+    monkeypatch.setattr(delegate.checkpoint, "changed_files", lambda *_: ["src/a.py", "oops.py"])
+    monkeypatch.setattr(delegate.herdr, "notify", lambda *a, **k: True)
+    monkeypatch.setattr(delegate.herdr, "start_builder_pane", lambda *a: "started")
+    monkeypatch.setattr(delegate.herdr, "prompt_result", lambda *a, **k: ("", 0, None))
+    assert delegate.delegate_task("TASK-001") == 0
+    assert log.last_for_task("TASK-001")["files_out_of_scope"] == 1
+    assert "`oops.py`" in path.read_text()
