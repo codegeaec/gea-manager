@@ -51,6 +51,7 @@ def test_hook_runs_the_secret_scan_and_the_strict_lint(tmp_path):
     secrets.install_hook(tmp_path)
     body = (tmp_path / ".git" / "hooks" / "pre-commit").read_text(encoding="utf-8")
     assert "gea scan-secrets" in body and "gea lint --strict" in body
+    assert "scan-secrets --help" in body  # old installs skip instead of blocking
 
 
 def test_outdated_gea_hook_is_upgraded_in_place(tmp_path):

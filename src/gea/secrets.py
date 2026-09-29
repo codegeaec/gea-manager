@@ -20,6 +20,8 @@ HOOK_MARKER = "# gea:secret-scan"
 HOOK_BODY = f"""#!/bin/sh
 {HOOK_MARKER}
 command -v gea >/dev/null 2>&1 || exit 0
+# An older gea without this subcommand must never block commits.
+gea scan-secrets --help >/dev/null 2>&1 || exit 0
 gea scan-secrets && gea lint --strict
 """
 
