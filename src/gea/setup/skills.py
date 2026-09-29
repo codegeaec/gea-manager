@@ -114,5 +114,11 @@ def dispatch_skills(args) -> int:
             print(f"✓ {name}")
         return 0
 
-    print("usage: gea skills [sync|list]")
+    if args.skills_command == "prune":
+        from gea.setup.skills_prune import run_prune
+
+        dryrun.enable(getattr(args, "dry_run", False))
+        return run_prune()
+
+    print("usage: gea skills [sync|list|prune]")
     return 1

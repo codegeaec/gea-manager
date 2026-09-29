@@ -113,6 +113,10 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     skills_sync.add_argument("--dry-run", action="store_true", help="report, change nothing")
     skills_sub.add_parser("list", help="list installed gea skills")
+    skills_prune = skills_sub.add_parser(
+        "prune", help="offer to remove installed skills gea did not install"
+    )
+    skills_prune.add_argument("--dry-run", action="store_true", help="report, change nothing")
 
     subparsers.add_parser("update", help="update gea, skills and mise-managed tools")
 
