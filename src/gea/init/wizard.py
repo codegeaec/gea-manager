@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from gea import config, platform, proc, ui
+from gea import config, dryrun, platform, proc, secrets, ui
 from gea.agents.profiles import load_profiles
 from gea.init import detect, scaffold
 from gea.tasks import store
@@ -63,12 +63,26 @@ def _pick_lang() -> tuple[str, str]:
     return commit_lang, docs_lang
 
 
-def run_init() -> int:
+def _pick_autonomy() -> str:
+    levels = list(config.AUTONOMY_LEVELS)
+    choice = ui.ask_choice(
+        "Builder autonomy (supervised = asks first, autonomous = never asks)",
+        levels,
+        default_index=levels.index(config.DEFAULT_AUTONOMY),
+    )
+    return levels[choice]
+
+
+def run_init(dry_run: bool = False) -> int:
+    dryrun.enable(dry_run)
     repo_root = Path.cwd()
 
     if not (repo_root / ".git").exists():
         if ui.ask_yes_no("No git repo here — run `git init`?", default=True):
-            proc.run(["git", "init"], timeout=15)
+            if dry_run:
+                dryrun.report("run: git init")
+            else:
+                proc.run(["git", "init"], timeout=15)
         else:
             ui.err("gea init needs a git repository")
             return 1
@@ -78,6 +92,8 @@ def run_init() -> int:
     primary_model = _pick_primary_model(primary)
     tasks_location = _pick_tasks_location()
     commit_lang, docs_lang = _pick_lang()
+    autonomy = _pick_autonomy()
+    ponytail = bool(config.load_global().get("optional", {}).get("ponytail", True))
 
     pm = detect.detect_pm(repo_root)
     if pm:
@@ -105,7 +121,8 @@ def run_init() -> int:
             "primaryModel": primary_model,
             "tasks": {"location": tasks_location},
             "verify": verify_commands,
-            "builders": {"mode": "ask", "allow": allow, "ponytail": True},
+            "builders": {"mode": "ask", "allow": allow, "ponytail": ponytail},
+            "autonomy": autonomy,
             "lang": {"commits": commit_lang, "docs": docs_lang},
             "pm": pm,
         }
@@ -125,6 +142,7 @@ def run_init() -> int:
         verify_commands=verify_commands,
         tasks_root_display=tasks_root_display,
         has_shadcn=has_shadcn,
+        autonomy=autonomy,
     ):
         ui.ok("AGENTS.md written")
 
@@ -141,6 +159,7 @@ def run_init() -> int:
         commit_lang,
         cfg["builders"]["ponytail"],
         tasks_root_display,
+        autonomy,
     )
     for path in written:
         ui.ok(f"{path} written")
@@ -156,12 +175,21 @@ def run_init() -> int:
     if tasks_location == "home":
         _ensure_gea_symlink(repo_root, project_name)
 
+    hook = secrets.install_hook(repo_root)
+    if hook == "installed":
+        ui.ok("pre-commit secret scan installed")
+    elif hook == "skipped":
+        ui.warn("a pre-commit hook already exists — add `gea scan-secrets` to it yourself")
+
     should_run_codegraph = platform.which("codegraph") and ui.ask_yes_no(
         "Run `codegraph init` for this project?", default=True
     )
     if should_run_codegraph:
-        proc.run(["codegraph", "init"], timeout=60)
-        ui.ok("codegraph initialized")
+        if dry_run:
+            dryrun.report("run: codegraph init")
+        else:
+            proc.run(["codegraph", "init"], timeout=60)
+            ui.ok("codegraph initialized")
 
     ui.ok("gea init complete")
     return 0
@@ -171,9 +199,12 @@ def _ensure_gea_symlink(repo_root: Path, project_name: str) -> None:
     from gea import paths
 
     target = paths.project_task_root(project_name)
-    target.mkdir(parents=True, exist_ok=True)
     link = repo_root / ".gea"
     if link.exists() or link.is_symlink():
         return
+    if dryrun.active():
+        dryrun.report(f"link {link} -> {target}")
+        return
+    target.mkdir(parents=True, exist_ok=True)
     link.symlink_to(target, target_is_directory=True)
     ui.ok(f".gea -> {target}")

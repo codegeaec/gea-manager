@@ -11,6 +11,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from gea import autonomy as autonomy_mod
+from gea import dryrun
+
 TEMPLATES_ROOT = Path(__file__).resolve().parent.parent / "templates"
 
 LANG_NAMES = {"es": "Spanish", "en": "English"}
@@ -26,6 +29,9 @@ def _read_template(lang: str, relative_path: str) -> str:
 def _write_if_missing(path: Path, content: str) -> bool:
     if path.exists():
         return False
+    if dryrun.active():
+        dryrun.report(f"write {path}")
+        return True
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
     return True
@@ -58,6 +64,7 @@ def render_agents_md(
     verify_commands: list[str],
     tasks_root_display: str,
     has_shadcn: bool,
+    autonomy: str = "balanced",
 ) -> str:
     template = _read_template(lang, "AGENTS.md")
     return template.format(
@@ -68,6 +75,7 @@ def render_agents_md(
         verify_commands="\n".join(verify_commands) or "(none configured yet)",
         tasks_root=tasks_root_display,
         shadcn_section=_shadcn_section(lang, pm, has_shadcn),
+        autonomy_line=autonomy_mod.describe(autonomy, lang),
     )
 
 
@@ -89,6 +97,7 @@ def write_agents_dir(
     commit_lang: str,
     ponytail: bool,
     tasks_root_display: str,
+    autonomy: str = "balanced",
 ) -> list[str]:
     written = []
     agents_dir = repo_root / ".agents"
@@ -112,6 +121,7 @@ def write_agents_dir(
         project_name=project_name,
         tasks_root=tasks_root_display,
         ponytail_section=ponytail_section,
+        autonomy_line=autonomy_mod.describe(autonomy, lang),
     )
     if _write_if_missing(agents_dir / "builder.md", builder):
         written.append(".agents/builder.md")
@@ -158,6 +168,9 @@ def write_docs(repo_root: Path, lang: str, project_name: str) -> list[str]:
 def merge_claude_settings(repo_root: Path) -> bool:
     path = repo_root / ".claude" / "settings.json"
     default = {"attribution": {"commit": "", "pr": "", "sessionUrl": False}}
+    if dryrun.active():
+        dryrun.report(f"merge attribution settings into {path}")
+        return not path.exists()
     if not path.exists():
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(default, indent=2) + "\n", encoding="utf-8")
@@ -182,6 +195,9 @@ def update_gitignore(repo_root: Path, tasks_location: str) -> bool:
     to_add = [e for e in entries if e not in existing]
     if not to_add:
         return False
+    if dryrun.active():
+        dryrun.report(f"add to {path}: {', '.join(to_add)}")
+        return True
     with path.open("a", encoding="utf-8") as f:
         if existing and existing[-1] != "":
             f.write("\n")
