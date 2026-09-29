@@ -12,10 +12,14 @@ after a fix.
 
 ## 1. Read
 
-- The task file: is `Status: review`? Are *Implementation Notes* and
+- Run `gea review-pack <TASK-ID>` and read only the file it writes
+  (`<task root>/review/<TASK-ID>.md`): the task, a size-capped diff since
+  the pre-delegation checkpoint, verify results run by gea itself (never
+  trust a builder's self-report) and scope warnings. Don't `git diff` /
+  `cat` files one by one — that is where review tokens go.
+- In the task: is `Status: review`? Are *Implementation Notes* and
   *Deviations* filled in (even briefly)?
-- `git diff` against the base commit noted when the task started.
-- Run `gea verify` yourself — never trust a builder's self-report.
+- Open a source file only when the pack's excerpt cuts something you need.
 
 ## 2. Check against
 

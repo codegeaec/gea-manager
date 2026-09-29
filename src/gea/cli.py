@@ -65,6 +65,11 @@ def _build_parser() -> argparse.ArgumentParser:
     verify_parser.add_argument("--task", default=None, help="also run this task's acceptance")
     verify_parser.add_argument("--quiet", action="store_true", help="print failures only")
 
+    pack_parser = subparsers.add_parser(
+        "review-pack", help="bundle task + diff + verify for review"
+    )
+    pack_parser.add_argument("task_id")
+
     subparsers.add_parser("scan-secrets", help="scan staged changes for secrets (pre-commit)")
     subparsers.add_parser("lint", help="check the size of AGENTS.md/CLAUDE.md/skills context")
 
@@ -164,6 +169,11 @@ def _main(argv: list[str] | None = None) -> int:
         from gea.verify import run_verify
 
         return run_verify(task_id=args.task, quiet=args.quiet)
+
+    if args.command == "review-pack":
+        from gea.review_pack import run_review_pack
+
+        return run_review_pack(args.task_id)
 
     if args.command == "scan-secrets":
         from gea.secrets import run_scan

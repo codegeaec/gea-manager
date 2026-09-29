@@ -51,6 +51,13 @@ def create(task_id: str, repo_root: Path | None = None) -> bool:
     return True
 
 
+def base_ref(task_id: str, repo_root: Path | None = None) -> str:
+    """The snapshot to diff against: the task's checkpoint, else HEAD."""
+    root = repo_root or Path.cwd()
+    snapshot, code = _git(root, "rev-parse", "--verify", SNAPSHOT_REF.format(task_id=task_id))
+    return snapshot if code == 0 else "HEAD"
+
+
 def changed_files(task_id: str, repo_root: Path | None = None) -> list[str] | None:
     """Files changed since the checkpoint (tracked edits vs. the snapshot, plus
     untracked files that did not exist then). None if there is no checkpoint."""

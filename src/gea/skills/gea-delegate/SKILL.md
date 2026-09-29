@@ -67,10 +67,13 @@ of waiting for the retry.
 
 Read files, not the terminal:
 
-1. The task: `Status` should be `review`, with *Implementation Notes* and
+`gea delegate` already printed a compact summary (files changed, files
+outside scope, verify result) — don't ask for the builder's terminal.
+
+1. `gea review-pack <TASK-ID>`, then read that single file: task, diff,
+   verify results and scope warnings.
+2. The task: `Status` should be `review`, with *Implementation Notes* and
    *Deviations* filled in.
-2. `git diff --stat <base-commit>`, then the diff itself.
-3. `gea verify` — don't trust that the builder ran it.
 
 Check against the plan and `AGENTS.md` (reuse, file-size limit, naming,
 docs updated). Write findings into the task's `## Review` section with a

@@ -14,19 +14,38 @@ from pathlib import Path
 from gea import config, proc, ui
 
 
+def execute(command: str) -> tuple[bool, str]:
+    """Run one command through bash. Returns (passed, last 20 output lines)."""
+    out, err, code = proc.run(["bash", "-c", command], timeout=300)
+    return code == 0, "\n".join((out + err).strip().splitlines()[-20:])
+
+
+def commands_for(repo_root: Path, task_id: str | None = None) -> list[str] | None:
+    """Project verify commands plus the task's acceptance commands. None if
+    `task_id` is unknown."""
+    commands: list[str] = list(config.load_project(repo_root).get("verify", []))
+    if task_id:
+        from gea.tasks import acceptance
+
+        criteria = acceptance.for_task(task_id, repo_root)
+        if criteria is None:
+            return None
+        commands += [c for c in criteria if c not in commands]
+    return commands
+
+
 def run_commands(commands: list[str], quiet: bool = False) -> list[str]:
     """Run each command through bash, printing pass/fail (only failures when
     `quiet`). Returns the failed ones."""
     failed = []
     for command in commands:
-        out, err, code = proc.run(["bash", "-c", command], timeout=300)
-        if code == 0:
+        passed, tail = execute(command)
+        if passed:
             if not quiet:
                 ui.ok(command)
         else:
             ui.err(command)
-            tail = (out + err).strip().splitlines()[-20:]
-            for line in tail:
+            for line in tail.splitlines():
                 print(f"    {line}")
             failed.append(command)
     return failed
@@ -36,17 +55,10 @@ def run_verify(
     repo_root: Path | None = None, task_id: str | None = None, quiet: bool = False
 ) -> int:
     repo_root = repo_root or Path.cwd()
-    cfg = config.load_project(repo_root)
-    commands: list[str] = list(cfg.get("verify", []))
-
-    if task_id:
-        from gea.tasks import acceptance
-
-        criteria = acceptance.for_task(task_id, repo_root)
-        if criteria is None:
-            ui.err(f"task not found: {task_id}")
-            return 1
-        commands += [c for c in criteria if c not in commands]
+    commands = commands_for(repo_root, task_id)
+    if commands is None:
+        ui.err(f"task not found: {task_id}")
+        return 1
 
     if not commands:
         ui.warn("no verify commands configured — run `gea init` or edit gea.json")
