@@ -23,14 +23,42 @@ irm https://raw.githubusercontent.com/codegeaec/gea-manager/main/install.ps1 | i
 
 ```bash
 gea setup      # wizard: instala y configura todo lo necesario en esta máquina
-gea doctor     # verifica sin instalar
+gea doctor     # herramientas, sesión de cada agente y tamaño del contexto (no instala)
 gea init       # deja un proyecto listo para trabajar con gea
 gea            # abre el workspace de herdr preconfigurado
 gea --help
 ```
 
+`setup`, `init`, `skills sync` y `uninstall` aceptan `--dry-run`: informan qué
+harían sin escribir ni instalar nada.
+
+### Tasks y delegación
+
+```bash
+gea task new "Título" --type bugfix   # bugfix | feature | refactor | spike
+gea verify --task TASK-001            # verify del proyecto + criterios de aceptación
+gea delegate TASK-001                 # toma un checkpoint de git y delega al builder
+gea undo TASK-001                     # vuelve al checkpoint previo a delegar
+gea task done TASK-001                # cierra; su ## Decisions pasa a docs/decisions.md
+```
+
+### Seguridad y mantenimiento
+
+```bash
+gea scan-secrets   # escanea el diff staged; `gea init` lo instala como hook pre-commit
+gea lint           # avisa si AGENTS.md, CLAUDE.md o una skill pesan demasiado
+gea uninstall      # revierte lo que setup registró (con backup y confirmación)
+```
+
+Cada proyecto puede fijar el nivel de autonomía del builder en `gea.json`
+(`"autonomy": "supervised" | "balanced" | "autonomous"`).
+
 Ver `docs/` para el diseño completo (tasks/subtasks, delegación, i18n,
-plantillas de proyecto).
+plantillas de proyecto) y `docs/commands.md` para el detalle de cada comando.
+
+## Licencia
+
+[MIT](LICENSE).
 
 ## Desarrollo
 
