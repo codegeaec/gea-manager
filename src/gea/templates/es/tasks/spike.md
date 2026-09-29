@@ -2,6 +2,7 @@
 
 Type: spike
 Status: planned
+Tier: M
 
 Created: {date}
 Updated: {date}

@@ -2,6 +2,7 @@
 
 Type: bugfix
 Status: planned
+Tier: M
 
 Created: {date}
 Updated: {date}

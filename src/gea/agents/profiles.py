@@ -13,7 +13,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from gea import config, platform, proc
-from gea.agents import state
+from gea.agents import log, state
 
 # Known cloud profiles behind a single CLI — mirrors what a real install
 # would report via `opencode models`, kept as a static fallback so
@@ -126,12 +126,14 @@ def pick_agent(
     agent_id: str | None = None,
     exclude_pools: tuple[str, ...] | list[str] = (),
     repo_root: Path | None = None,
+    tier: str | None = None,
 ) -> AgentProfile | None:
     """First available builder: not exhausted, allowed by the project's
     `builders.allow`, and not in `exclude_pools`. With `agent_id`, only that
     profile qualifies."""
     pools = state.load()
-    allow = config.load_project(repo_root or Path.cwd()).get("builders", {}).get("allow")
+    builders = config.load_project(repo_root or Path.cwd()).get("builders", {})
+    allow = builders.get("allow")
     candidates = [
         p
         for p in load_profiles()
@@ -141,4 +143,36 @@ def pick_agent(
     ]
     if agent_id:
         return next((p for p in candidates if p.id == agent_id), None)
+    if tier:
+        candidates = rank_for_tier(candidates, tier, builders.get("tiers", {}).get(tier))
     return candidates[0] if candidates else None
+
+
+MIN_ATTEMPTS_TO_RANK = 5
+
+
+def rank_for_tier(
+    candidates: list[AgentProfile], tier: str, forced: list[str] | None = None
+) -> list[AgentProfile]:
+    """Order candidates for a task tier.
+
+    `builders.tiers[tier]` in gea.json (a list of ids) restricts and orders
+    them outright. Otherwise the priority order stands, except that agents
+    with at least MIN_ATTEMPTS_TO_RANK logged builds in this tier are ranked
+    by their verified success rate; agents with less history count as 0.5,
+    so a proven-bad agent sinks and a proven-good one rises.
+    """
+    if forced:
+        by_id = {p.id: p for p in candidates}
+        return [by_id[i] for i in forced if i in by_id]
+    builds = [
+        e for e in log.read(tier=tier) if e.get("kind", "build") == "build"
+    ]
+
+    def score(p: AgentProfile) -> float:
+        mine = [e for e in builds if e.get("agent_id") == p.id]
+        if len(mine) < MIN_ATTEMPTS_TO_RANK:
+            return 0.5
+        return sum(1 for e in mine if e.get("result") == "done" and e.get("verify_ok")) / len(mine)
+
+    return sorted(candidates, key=lambda p: -score(p))

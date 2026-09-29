@@ -8,6 +8,7 @@ TASK_TEMPLATE = {
     "en": """# {task_id} - {title}
 
 Status: planned
+Tier: M
 
 Created: {date}
 Updated: {date}
@@ -49,6 +50,7 @@ Updated: {date}
     "es": """# {task_id} - {title}
 
 Status: planned
+Tier: M
 
 Created: {date}
 Updated: {date}
@@ -94,6 +96,7 @@ SUBTASK_TEMPLATE = {
 
 Parent: {parent_id}
 Status: planned
+Tier: M
 Depends on: {depends}
 
 Created: {date}
@@ -128,6 +131,7 @@ Updated: {date}
 
 Parent: {parent_id}
 Status: planned
+Tier: M
 Depends on: {depends}
 
 Created: {date}

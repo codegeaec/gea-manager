@@ -48,3 +48,34 @@ def test_review_without_another_agent_fails_cleanly(tmp_path, monkeypatch):
     _seed(tmp_path, monkeypatch, ("a",))
     log.append({"kind": "build", "task_id": "TASK-001", "agent_id": "a", "pool": "a"})
     assert review.review_task("TASK-001") == 1
+
+
+def _builds(agent, tier, ok, n):
+    for _ in range(n):
+        log.append(
+            {"kind": "build", "agent_id": agent, "tier": tier, "result": "done", "verify_ok": ok}
+        )
+
+
+def test_tier_ranking_demotes_a_proven_bad_agent(tmp_path, monkeypatch):
+    _seed(tmp_path, monkeypatch, ("a", "b"))
+    assert profiles.pick_agent(tier="L").id == "a"  # no history: priority order
+    _builds("a", "L", False, 5)
+    _builds("b", "L", True, 5)
+    assert profiles.pick_agent(tier="L").id == "b"
+    assert profiles.pick_agent(tier="S").id == "a"  # history is per tier
+
+
+def test_tier_ranking_ignores_too_little_history(tmp_path, monkeypatch):
+    _seed(tmp_path, monkeypatch, ("a", "b"))
+    _builds("a", "L", False, 4)
+    assert profiles.pick_agent(tier="L").id == "a"
+
+
+def test_forced_tier_list_restricts_and_orders(tmp_path, monkeypatch):
+    _seed(tmp_path, monkeypatch, ("a", "b", "c"))
+    (tmp_path / "gea.json").write_text(
+        '{"tasks":{"location":"repo"},"builders":{"tiers":{"L":["c","b"]}}}'
+    )
+    assert profiles.pick_agent(tier="L").id == "c"
+    assert profiles.pick_agent(tier="M").id == "a"

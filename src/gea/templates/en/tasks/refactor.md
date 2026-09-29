@@ -2,6 +2,7 @@
 
 Type: refactor
 Status: planned
+Tier: M
 
 Created: {date}
 Updated: {date}

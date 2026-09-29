@@ -58,7 +58,8 @@ def delegate_task(task_id: str, agent_id: str | None = None) -> int:
         ui.err(f"task not found: {task_id}")
         return 1
 
-    agent = profiles.pick_agent(agent_id)
+    tier = store.read_header(task_path, "Tier")
+    agent = profiles.pick_agent(agent_id, tier=tier)
     if agent is None:
         ui.warn("no builder agent available — implement it yourself or run `gea agents available`")
         return 1
@@ -76,6 +77,7 @@ def delegate_task(task_id: str, agent_id: str | None = None) -> int:
             {
                 "project": Path.cwd().name,
                 "kind": "build",
+                "tier": tier,
                 "task_id": task_id,
                 "agent_id": agent.id,
                 "pool": agent.pool,

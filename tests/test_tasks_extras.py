@@ -85,3 +85,9 @@ def test_quiet_verify_prints_only_failures(repo, monkeypatch, capsys):
     assert verify.run_verify(repo, quiet=True) == 1
     out = capsys.readouterr().out
     assert "false" in out and "true" not in out.replace("false", "")
+
+
+@pytest.mark.parametrize("kind", [None, *templates.TASK_TYPES])
+def test_every_task_template_has_a_tier(kind):
+    text = templates.render_task("TASK-001", "T", "2026-01-01", task_type=kind)
+    assert "Tier: M" in text

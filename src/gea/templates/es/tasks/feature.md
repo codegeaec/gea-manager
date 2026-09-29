@@ -2,6 +2,7 @@
 
 Type: feature
 Status: planned
+Tier: M
 
 Created: {date}
 Updated: {date}
