@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 
 from gea import autonomy as autonomy_mod
-from gea import dryrun
+from gea import dryrun, managed_block, manifest
 from gea.init import inspect as inspect_mod
 
 TEMPLATES_ROOT = Path(__file__).resolve().parent.parent / "templates"
@@ -232,3 +232,47 @@ def stop_ignoring_gea_json(repo_root: Path) -> bool:
     path.with_name(".gitignore.bak").write_text("\n".join(lines) + "\n", encoding="utf-8")
     path.write_text("\n".join(ln for ln in lines if ln != "gea.json") + "\n", encoding="utf-8")
     return True
+
+
+def _record(path: Path) -> None:
+    manifest.record(manifest.KIND_INSTRUCTIONS, str(path))
+
+
+def ensure_agents_md(repo_root: Path, **kwargs) -> str:
+    """AGENTS.md from the template when missing, else gea's managed block
+    added to (or refreshed in) the user's own file. Returns 'created',
+    'updated' or 'unchanged'."""
+    path = repo_root / "AGENTS.md"
+    if not path.exists():
+        return "created" if write_agents_md(repo_root, **kwargs) else "unchanged"
+    lang = kwargs["lang"]
+    verify = kwargs["verify_commands"]
+    body = _read_template(lang, "blocks/agents.md").format(
+        tasks_root=kwargs["tasks_root_display"],
+        autonomy_line=autonomy_mod.describe(kwargs.get("autonomy", "balanced"), lang),
+        verify_note=f" ({', '.join(f'`{c}`' for c in verify)})" if verify else "",
+    )
+    changed = managed_block.upsert(path, body)
+    if changed:
+        _record(path)
+    return "updated" if changed else "unchanged"
+
+
+def ensure_claude_md(
+    repo_root: Path, lang: str, project_name: str, tasks_root_display: str
+) -> str:
+    """CLAUDE.md from the template when missing, else a managed block that
+    imports the shared orchestrator instructions (and AGENTS.md if the
+    file did not already)."""
+    path = repo_root / "CLAUDE.md"
+    if not path.exists():
+        created = write_claude_md(repo_root, lang, project_name, tasks_root_display)
+        return "created" if created else "unchanged"
+    already = "@AGENTS.md" in path.read_text(encoding="utf-8")
+    body = _read_template(lang, "blocks/claude.md").format(
+        agents_import="" if already else "@AGENTS.md\n"
+    )
+    changed = managed_block.upsert(path, body)
+    if changed:
+        _record(path)
+    return "updated" if changed else "unchanged"

@@ -167,7 +167,7 @@ def run_init(
 
     tasks_root_display = _tasks_root_display(cfg)
 
-    if scaffold.write_agents_md(
+    action = scaffold.ensure_agents_md(
         repo_root,
         lang=agents_lang,
         project_name=project_name,
@@ -178,12 +178,14 @@ def run_init(
         tasks_root_display=tasks_root_display,
         has_shadcn=has_shadcn,
         autonomy=autonomy,
-    ):
-        ui.ok("AGENTS.md written")
+    )
+    if action != "unchanged":
+        ui.ok(f"AGENTS.md {action}")
 
     if platform.which("claude"):
-        if scaffold.write_claude_md(repo_root, agents_lang, project_name, tasks_root_display):
-            ui.ok("CLAUDE.md written")
+        action = scaffold.ensure_claude_md(repo_root, agents_lang, project_name, tasks_root_display)
+        if action != "unchanged":
+            ui.ok(f"CLAUDE.md {action}")
         if scaffold.merge_claude_settings(repo_root):
             ui.ok(".claude/settings.json written")
 
