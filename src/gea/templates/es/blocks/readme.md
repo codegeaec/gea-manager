@@ -7,5 +7,6 @@ que orquesta agentes de IA para programar.
 - Una vez por proyecto: `gea init` (ya hecho aquí).
 - Flujo: `gea task new` → `gea delegate <ID>` → `gea review-pack <ID>` →
   `gea task done <ID>`.
+- `gea` abre el workspace de herdr; los tabs extra (monorepos) van en `gea.json` → `tabs`.
 - Las tasks viven en `{tasks_root}`. Agentes: `AGENTS.md`, `.agents/gea.md`
   (chuleta de comandos) y `gea guide` (guías paso a paso).

@@ -71,6 +71,47 @@ plantillas de proyecto) y `docs/commands.md` para el detalle de cada comando.
 
 [MIT](LICENSE).
 
+## El workspace: `gea` sin argumentos
+
+`gea` abre (o enfoca) el workspace de herdr del proyecto, con estos tabs:
+
+1. `claude` (o el agente de `primary` en `gea.json`), ya iniciado. En un
+   workspace nuevo reutiliza el tab con el que herdr lo crea, así no queda un
+   tab `1` suelto.
+2. `terminal`, un shell en la raíz del repo.
+3. Los tabs extra que declares en `tabs`.
+
+Es idempotente por nombre de tab: volver a correr `gea` no duplica nada y solo
+crea lo que falte.
+
+### Tabs adicionales (monorepos)
+
+En `gea.json`, la lista `tabs` añade terminales apuntando a una ruta del repo:
+
+```json
+{
+  "tabs": [
+    { "label": "web", "cwd": "apps/web" },
+    { "label": "api", "cwd": "apps/api", "command": "pnpm dev" },
+    { "label": "docs", "cwd": "packages/docs" }
+  ]
+}
+```
+
+| Campo | Obligatorio | Qué hace |
+|---|---|---|
+| `label` | sí | Nombre del tab. Único (sin distinguir mayúsculas) y distinto de `terminal` y del agente primario. |
+| `cwd` | no | Carpeta donde abre el shell, **relativa a la raíz del repo** (sin rutas absolutas ni `..`). Por defecto, la raíz. Si no existe, gea avisa y omite ese tab. |
+| `command` | no | Comando que se ejecuta **solo cuando gea crea el tab**. Al reabrir el workspace no se relanza, así que un `pnpm dev` no se reinicia. |
+
+Orden final: agente, `terminal` y luego tus tabs en el orden del JSON. Como
+`gea.json` se commitea, todo el equipo abre el monorepo igual. Para tener tabs
+propios, ponlos en `gea.local.json` (ignorado por git): una lista `tabs` ahí
+reemplaza a la compartida.
+
+Si ya tienes un workspace abierto, gea no cierra ni renombra tabs que no creó:
+los tabs nuevos se añaden a los existentes.
+
 ## Desarrollo
 
 ```bash

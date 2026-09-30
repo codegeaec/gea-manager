@@ -155,6 +155,12 @@ self-sufficient tasks (`## Files` + `## Acceptance`, filled with codegraph).
 `gea status`, `gea task new --from-issue N` (uses `gh issue view`),
 `gea pr <ID>` (generated body, confirmation first, no tool signature).
 
+# Workspace tabs
+
+`gea` no longer leaves herdr's initial tab "1": it becomes the agent tab.
+`gea.json["tabs"]` (`label`, `cwd`, optional `command`) adds tabs for
+monorepos; see `docs/workspace.md` and the README.
+
 # Init and adoption pass
 
 `gea init` (see `docs/init.md`): three separate language questions

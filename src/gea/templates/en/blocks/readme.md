@@ -7,5 +7,6 @@ which orchestrates AI coding agents.
 - Once per project: `gea init` (already done here).
 - Flow: `gea task new` → `gea delegate <ID>` → `gea review-pack <ID>` →
   `gea task done <ID>`.
+- `gea` opens the herdr workspace; extra tabs (monorepos) go in `gea.json` → `tabs`.
 - Tasks live in `{tasks_root}`. Agents: `AGENTS.md`, `.agents/gea.md`
   (command cheat sheet) and `gea guide` (step-by-step guides).
