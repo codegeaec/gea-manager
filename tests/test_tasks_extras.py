@@ -29,9 +29,25 @@ def test_create_task_with_type(repo):
     assert "Root Cause" in path.read_text(encoding="utf-8")
 
 
-def test_acceptance_parses_only_backticked_bullets():
+def test_acceptance_parses_only_backticked_bullets(monkeypatch):
+    monkeypatch.setattr(acceptance.platform, "which", lambda n: n if n == "pytest" else None)
     text = "## Acceptance\n\n- [ ] prose only\n- [ ] runs `pytest -q`\n\n## Files\n- `nope`\n"
     assert acceptance.parse(text) == ["pytest -q"]
+
+
+def test_acceptance_ignores_names_paths_and_jsx_but_honours_run_prefix(monkeypatch):
+    monkeypatch.setattr(acceptance.platform, "which", lambda n: n if n in ("rg", "pnpm") else None)
+    text = (
+        "## Acceptance\n"
+        "- [ ] Exists `IconButton` in `src/ui/icon-button.tsx`\n"
+        "- [ ] No `<Button` left, `rg -n 'size=\"icon' src`\n"
+        "- [ ] Docs in `.agents/x.md` and `AGENTS.md`\n"
+        "- [ ] `run: custom-check --fast`\n"
+        "- [ ] `pnpm lint`\n"
+    )
+    commands, skipped = acceptance.scan(text)
+    assert commands == ["rg -n 'size=\"icon' src", "custom-check --fast", "pnpm lint"]
+    assert skipped == 2
 
 
 def test_verify_task_runs_acceptance_commands(repo, monkeypatch):

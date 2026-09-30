@@ -32,9 +32,12 @@ binary with no skill of its own). Answers persist in
 
 - `gea task new --type bugfix|feature|refactor|spike` uses
   `templates/<lang>/tasks/<type>.md`.
-- `## Acceptance` bullets containing a backticked command are run by
+- `## Acceptance` bullets with a backticked command are run by
   `gea verify --task <ID>` through the same runner as the project's verify
-  commands.
+  commands. A backticked span is a command only if it starts with `run:`
+  (`run: pnpm lint`) or its first word resolves to an executable; component
+  names, paths and JSX are ignored, and the number of ignored bullets is
+  reported.
 - Closing a task appends its `## Decisions` to `docs/decisions.md`
   (idempotent).
 

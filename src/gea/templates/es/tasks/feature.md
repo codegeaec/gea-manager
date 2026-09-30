@@ -27,7 +27,7 @@ _Pasos de implementación, en orden._
 
 ## Acceptance
 
-_Un bullet por criterio; con un comando entre backticks se ejecuta con `gea verify --task <ID>`._
+_Un bullet por criterio; con un comando entre backticks (`run: pnpm lint`, o uno cuyo primer término sea un ejecutable) se ejecuta con `gea verify --task <ID>`; nombres, rutas y JSX entre backticks se ignoran._
 
 - [ ] 
 

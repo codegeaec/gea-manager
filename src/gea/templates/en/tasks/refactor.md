@@ -23,7 +23,7 @@ _Small steps, each leaving the tree green._
 
 ## Acceptance
 
-_One bullet per criterion; a backticked command runs with `gea verify --task <ID>`._
+_One bullet per criterion; a backticked command (`run: pnpm lint`, or one whose first word is an executable) runs with `gea verify --task <ID>`; names, paths and JSX in backticks are ignored._
 
 - [ ] 
 

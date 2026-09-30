@@ -11,8 +11,9 @@ la task, no el chat.
 4. Completá Objective, Context, Requirements, Plan y — obligatorio antes de
    delegar — `## Files` (cada ruta que el builder puede tocar, entre
    backticks; sirven globs y directorios) y `## Acceptance` (un bullet por
-   criterio; con un comando entre backticks lo chequea
-   `gea verify --task <ID>`).
+   criterio; un comando entre backticks —mejor con prefijo `run:`— lo
+   chequea `gea verify --task <ID>`; nombres y rutas entre backticks se
+   ignoran).
 5. Poné `Tier: S|M|L` (S mecánica, L delicada o transversal) y, si los 30
    min por defecto no sirven, `Budget: 45m`.
 6. ¿Task grande (4+ pasos sobre archivos separables)? `gea subtask new <ID>
