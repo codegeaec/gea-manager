@@ -202,3 +202,18 @@ only when the run looks wrong (a herdr error or timeout, failed verify, or no
 files changed), so a normal run never pays for it and code that merely
 mentions "rate limit" cannot trigger it. Implemented in
 `src/gea/agents/exhaustion.py`.
+
+# `gea verify` for unattended callers
+
+Builders saw `exit 130` with "(no output)": verify captured all output until each
+command finished, so a slow `tsc`/`eslint` (a cold worktree can take a minute)
+looked like a hang and the agent's shell tool interrupted it. On interruption
+`subprocess.run` only killed the direct child, leaving `pnpm → tsc/eslint` orphans
+that slowed the retry. Now (`proc.run_streaming`, `verify.py`):
+- `→ command (last time: 38s)` when a command starts and `… command (15s)` every
+  5 s on stderr, even with `--quiet` (`progress=False` for `gea delegate`'s own run);
+- the command runs in its own process group; timeout, Ctrl-C or SIGTERM kill the
+  whole tree, and verify exits 130 with a message telling the agent to re-run it;
+- one verify per repo at a time (`<git-dir>/gea/verify.lock`, an OS `flock`, freed
+  if the holder dies): a second one waits and says which pid it waits for;
+- the last duration of each command is remembered in `<git-dir>/gea/`.

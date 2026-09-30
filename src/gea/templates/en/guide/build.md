@@ -7,7 +7,7 @@ You implement one task; planning and review happen elsewhere.
    helpers. If the plan is ambiguous, note it in *Deviations* and take the most
    reasonable reading.
 3. Verify: `gea verify --quiet --task <ID>` (project checks + `## Acceptance`).
-   Fix what it reports; run nothing else.
+   Fix what it reports; run nothing else. It can take up to a minute: do not interrupt or re-run it while it works — it prints `→ command` and a heartbeat every few seconds. If your tool cuts it (exit 130), run it again and wait.
 4. Fill in *Implementation Notes* / *Deviations* briefly, update `docs/` if
    behaviour or architecture changed, and leave the task in `review`.
 5. Do not commit and do not mark the task completed.

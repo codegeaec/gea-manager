@@ -123,5 +123,9 @@
   "exhausted.closed": "{pane}: pane cerrado",
   "exhausted.next": "prueba con {agent}: {cmd}",
   "exhausted.none": "no hay otro agente disponible — implementalo vos o esperá al reinicio del cupo",
-  "delegate.yolo_needs_worktree": "builders.permissions es \"yolo\" (sin verificación de permisos), y gea solo lo permite dentro de un worktree — usa `gea delegate --worktree` o pon builders.worktrees: true"
+  "delegate.yolo_needs_worktree": "builders.permissions es \"yolo\" (sin verificación de permisos), y gea solo lo permite dentro de un worktree — usa `gea delegate --worktree` o pon builders.worktrees: true",
+  "verify.last_time": " (la última vez: {seconds}s)",
+  "verify.typical": " Suele tardar ~{seconds}s.",
+  "verify.interrupted": "interrumpido (130) mientras corría `{command}` tras {seconds}s.{typical} Vuelve a correrlo y no lo canceles: imprime un latido mientras trabaja.",
+  "verify.waiting": "otro verify está corriendo (pid {pid}), esperando…"
 }

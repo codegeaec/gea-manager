@@ -15,7 +15,7 @@ implement. Always read: `AGENTS.md` and any doc the task points to.
    in *Deviations* and continue with the most reasonable interpretation
    instead of blocking.
 2. **Verify** — run `gea verify --task <TASK-ID>` (project checks plus the
-   task's `## Acceptance` commands; only that, nothing else).
+   task's `## Acceptance` commands; only that, nothing else). It can take up to a minute: do not interrupt or re-run it while it works — it prints `→ command` and a heartbeat every few seconds. If your tool cuts it (exit 130), run it again and wait.
 3. **Record and leave in `review`** — update `docs/` if behavior or
    architecture changed, fill in *Implementation Notes* / *Deviations*
    (brief — the diff already has the detail), and leave the task in

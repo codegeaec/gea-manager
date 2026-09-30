@@ -189,7 +189,12 @@ def delegate_task(
         record("exhausted" if out_of_quota() else blocked)
         return 1
     stray = _check_scope(task_id, task_path, wt)
-    verify_ok = verify.run_verify(root, task_id, quiet=True, cwd=wt.path if wt else None) == 0
+    verify_ok = (
+        verify.run_verify(
+            root, task_id, quiet=True, cwd=wt.path if wt else None, progress=False
+        )
+        == 0
+    )
     # A builder stuck on a quota message returns "done" having changed nothing.
     if (not verify_ok or not _changed(task_id, wt)) and out_of_quota():
         record("exhausted", stray, verify_ok)

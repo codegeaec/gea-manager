@@ -3,7 +3,11 @@ into the real shell (AGENTS.md: tests never touch the real machine)."""
 
 from __future__ import annotations
 
+import os
+import signal
 import subprocess
+from collections.abc import Callable
+from pathlib import Path
 
 from gea import dryrun
 
@@ -46,3 +50,60 @@ def run_visible(cmd: list[str], timeout: int | None = None) -> int:
         return completed.returncode
     except (OSError, subprocess.TimeoutExpired):
         return 1
+
+
+def _kill_group(process: subprocess.Popen, grace: float = 2.0) -> None:
+    """Terminate `process` and everything it started (its whole process group)."""
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except OSError:
+        return
+    try:
+        process.wait(timeout=grace)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except OSError:
+            pass
+        process.wait()
+
+
+def run_streaming(
+    cmd: list[str],
+    timeout: int = 300,
+    on_tick: Callable[[int], None] | None = None,
+    tick_every: float = 5.0,
+    cwd: Path | None = None,
+) -> tuple[str, str, int]:
+    """Like `run`, but for long commands (verify, installs).
+
+    - `on_tick(elapsed_seconds)` is called every `tick_every` seconds while it runs,
+      so callers can show a heartbeat instead of minutes of silence;
+    - the command runs in its own process group, and on timeout, Ctrl-C or SIGTERM
+      the *whole group* is killed — `subprocess.run` only kills the direct child,
+      leaving grandchildren (pnpm -> tsc/eslint) running as orphans;
+    - a timeout returns code 124 (with a note on stderr), a missing binary 127.
+    """
+    try:
+        process = subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            start_new_session=True, cwd=cwd,
+        )
+    except OSError as exc:
+        return "", str(exc), 127
+    elapsed = 0.0
+    try:
+        while True:
+            try:
+                out, err = process.communicate(timeout=tick_every)
+                return out, err, process.returncode
+            except subprocess.TimeoutExpired:
+                elapsed += tick_every
+                if elapsed >= timeout:
+                    _kill_group(process)
+                    return "", f"timed out after {timeout}s", 124
+                if on_tick:
+                    on_tick(int(elapsed))
+    except BaseException:  # KeyboardInterrupt, SystemExit from a SIGTERM handler, ...
+        _kill_group(process)
+        raise

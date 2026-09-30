@@ -16,7 +16,7 @@ task.
    anotalo en *Deviations* y seguí con la mejor interpretación razonable
    en vez de bloquearte.
 2. **Verificar** — corré `gea verify --task <TASK-ID>` (checks del
-   proyecto más los comandos de `## Acceptance` de la task; solo eso).
+   proyecto más los comandos de `## Acceptance` de la task; solo eso). Puede tardar hasta un minuto: no lo interrumpas ni lo relances mientras trabaja — imprime `→ comando` y un latido cada pocos segundos. Si tu herramienta lo corta (exit 130), vuelve a correrlo y espera.
 3. **Anotar y dejar en `review`** — actualizá `docs/` si cambió el
    comportamiento o la arquitectura, llená *Implementation Notes* /
    *Deviations* (breve — el detalle ya está en el diff) y dejá la task en
