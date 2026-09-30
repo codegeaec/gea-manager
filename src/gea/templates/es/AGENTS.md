@@ -21,7 +21,8 @@ específico del proyecto está al final, en `## Project`.
 
 Los cambios no triviales pasan por una task antes de implementarse. Ver
 `.agents/builder.md` para el ciclo implementar→revisar→cerrar, y usar `gea
-task new` / `gea subtask new` / `gea delegate` para manejarlo.
+task new` / `gea subtask new` / `gea delegate` para manejarlo. Chuleta de
+comandos: `.agents/gea.md`; guías paso a paso: `gea guide`.
 
 ## Directorios
 

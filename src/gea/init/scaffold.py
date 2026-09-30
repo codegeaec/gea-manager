@@ -20,7 +20,7 @@ TEMPLATES_ROOT = Path(__file__).resolve().parent.parent / "templates"
 LANG_NAMES = {"es": "Spanish", "en": "English"}
 
 
-def _read_template(lang: str, relative_path: str) -> str:
+def read_template(lang: str, relative_path: str) -> str:
     path = TEMPLATES_ROOT / lang / relative_path
     if not path.exists():
         path = TEMPLATES_ROOT / "en" / relative_path
@@ -67,7 +67,7 @@ def render_agents_md(
     has_shadcn: bool,
     autonomy: str = "balanced",
 ) -> str:
-    template = _read_template(lang, "AGENTS.md")
+    template = read_template(lang, "AGENTS.md")
     return template.format(
         project_name=project_name,
         pm=pm,
@@ -86,7 +86,7 @@ def write_agents_md(repo_root: Path, **kwargs) -> bool:
 
 
 def write_claude_md(repo_root: Path, lang: str, project_name: str, tasks_root_display: str) -> bool:
-    template = _read_template(lang, "CLAUDE.md")
+    template = read_template(lang, "CLAUDE.md")
     content = template.format(project_name=project_name, tasks_root=tasks_root_display)
     return _write_if_missing(repo_root / "CLAUDE.md", content)
 
@@ -103,14 +103,14 @@ def write_agents_dir(
     written = []
     agents_dir = repo_root / ".agents"
 
-    readme = _read_template(lang, "agents/README.md").format(project_name=project_name)
+    readme = read_template(lang, "agents/README.md").format(project_name=project_name)
     if _write_if_missing(agents_dir / "README.md", readme):
         written.append(".agents/README.md")
 
-    commits = _read_template(lang, "agents/commit-conventions.md").format(
+    commits = read_template(lang, "agents/commit-conventions.md").format(
         commit_lang=LANG_NAMES.get(commit_lang, commit_lang)
     )
-    gotchas = _read_template(lang, "agents/gotchas.md").format(project_name=project_name)
+    gotchas = read_template(lang, "agents/gotchas.md").format(project_name=project_name)
     for name, content in (("commit-conventions.md", commits), ("gotchas.md", gotchas)):
         # A project's own equivalent (e.g. convenciones-commits.md) wins: no duplicate.
         if not inspect_mod.find_equivalent(agents_dir, name) and _write_if_missing(
@@ -118,12 +118,16 @@ def write_agents_dir(
         ):
             written.append(f".agents/{name}")
 
-    orchestrator = _read_template(lang, "agents/orchestrator.md")
+    cheat_sheet = read_template(lang, "agents/gea.md")
+    if _write_if_missing(agents_dir / "gea.md", cheat_sheet):
+        written.append(".agents/gea.md")
+
+    orchestrator = read_template(lang, "agents/orchestrator.md")
     if _write_if_missing(agents_dir / "orchestrator.md", orchestrator):
         written.append(".agents/orchestrator.md")
 
     ponytail_section = _ponytail_section(lang) if ponytail else ""
-    builder = _read_template(lang, "agents/builder.md").format(
+    builder = read_template(lang, "agents/builder.md").format(
         project_name=project_name,
         tasks_root=tasks_root_display,
         ponytail_section=ponytail_section,
@@ -155,16 +159,16 @@ def write_docs(repo_root: Path, lang: str, project_name: str) -> list[str]:
     written = []
     docs_dir = repo_root / "docs"
 
-    index = _read_template(lang, "docs/INDEX.md").format(project_name=project_name)
+    index = read_template(lang, "docs/INDEX.md").format(project_name=project_name)
     if _write_if_missing(docs_dir / "INDEX.md", index):
         written.append("docs/INDEX.md")
 
     vision_name = "00-vision-producto.md" if lang == "es" else "00-vision-product.md"
-    vision = _read_template(lang, f"docs/{vision_name}").format(project_name=project_name)
+    vision = read_template(lang, f"docs/{vision_name}").format(project_name=project_name)
     if _write_if_missing(docs_dir / vision_name, vision):
         written.append(f"docs/{vision_name}")
 
-    adr_template = _read_template(lang, "docs/adr-template.md")
+    adr_template = read_template(lang, "docs/adr-template.md")
     if _write_if_missing(docs_dir / "adr" / "0000-template.md", adr_template):
         written.append("docs/adr/0000-template.md")
 
@@ -247,7 +251,7 @@ def ensure_agents_md(repo_root: Path, **kwargs) -> str:
         return "created" if write_agents_md(repo_root, **kwargs) else "unchanged"
     lang = kwargs["lang"]
     verify = kwargs["verify_commands"]
-    body = _read_template(lang, "blocks/agents.md").format(
+    body = read_template(lang, "blocks/agents.md").format(
         tasks_root=kwargs["tasks_root_display"],
         autonomy_line=autonomy_mod.describe(kwargs.get("autonomy", "balanced"), lang),
         verify_note=f" ({', '.join(f'`{c}`' for c in verify)})" if verify else "",
@@ -269,10 +273,43 @@ def ensure_claude_md(
         created = write_claude_md(repo_root, lang, project_name, tasks_root_display)
         return "created" if created else "unchanged"
     already = "@AGENTS.md" in path.read_text(encoding="utf-8")
-    body = _read_template(lang, "blocks/claude.md").format(
+    body = read_template(lang, "blocks/claude.md").format(
         agents_import="" if already else "@AGENTS.md\n"
     )
     changed = managed_block.upsert(path, body)
     if changed:
         _record(path)
     return "updated" if changed else "unchanged"
+
+
+# Where each CLI looks for project slash commands.
+COMMAND_DIRS = {"claude": ".claude/commands", "opencode": ".opencode/commands"}
+GUIDE_COMMANDS = ("gea-plan", "gea-delegate", "gea-review")
+
+
+def write_slash_commands(repo_root: Path, lang: str, clis: list[str]) -> list[str]:
+    """`/gea-plan`, `/gea-delegate`, `/gea-review` for the given CLIs. Each just
+    tells the agent to run `gea guide <topic>` — no skill install needed."""
+    written = []
+    for cli in clis:
+        directory = COMMAND_DIRS.get(cli)
+        if not directory:
+            continue
+        for name in GUIDE_COMMANDS:
+            content = read_template(lang, f"commands/{name}.md")
+            if _write_if_missing(repo_root / directory / f"{name}.md", content):
+                written.append(f"{directory}/{name}.md")
+    return written
+
+
+def ensure_readme(repo_root: Path, lang: str, project_name: str, tasks_root_display: str) -> str:
+    """A 'Working with gea' section in README.md (created if missing)."""
+    path = repo_root / "README.md"
+    created = not path.exists()
+    if created and not dryrun.active():
+        path.write_text(f"# {project_name}\n", encoding="utf-8")
+    body = read_template(lang, "blocks/readme.md").format(tasks_root=tasks_root_display)
+    changed = managed_block.upsert(path, body)
+    if changed:
+        _record(path)
+    return "created" if created else ("updated" if changed else "unchanged")

@@ -8,3 +8,4 @@ Each task carries `## Files` and `## Acceptance` filled in.
 - Tasks/subtasks: `{tasks_root}`
 - Autonomy: {autonomy_line}
 - Verification: `gea verify --task <TASK-ID>`{verify_note}
+- Command cheat sheet: `.agents/gea.md` · step-by-step guides: `gea guide`

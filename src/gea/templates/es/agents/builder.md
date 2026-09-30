@@ -27,7 +27,7 @@ task.
 
 Diagnosticá vos mismo (reproducí, inspeccioná logs/código, buscá la causa
 raíz, aplicá el fix más chico que la resuelva) y anotá causa + fix en
-*Implementation Notes*. Revisá primero `.agents/gotchas.md`.
+*Implementation Notes*. Revisá primero `.agents/gotchas.md`. ¿Perdido? `gea guide build`.
 
 ## Project
 

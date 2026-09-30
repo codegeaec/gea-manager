@@ -65,6 +65,7 @@ def test_write_agents_dir_writes_all_files(tmp_path):
         ".agents/gotchas.md",
         ".agents/builder.md",
         ".agents/orchestrator.md",
+        ".agents/gea.md",
     }
     builder = (tmp_path / ".agents" / "builder.md").read_text(encoding="utf-8")
     assert "ponytail" in builder.lower()

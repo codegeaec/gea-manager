@@ -99,6 +99,12 @@ def _build_parser() -> argparse.ArgumentParser:
     pr_parser.add_argument("task_id")
     pr_parser.add_argument("--yes", action="store_true", help="skip the confirmation")
 
+    guide_parser = subparsers.add_parser("guide", help="print the step-by-step working guide")
+    guide_parser.add_argument(
+        "topic", nargs="?", default="all", help="plan | delegate | review | build | all"
+    )
+    guide_parser.add_argument("--lang", choices=["es", "en"], default=None)
+
     subparsers.add_parser("status", help="active tasks, gea panes and exhausted pools")
 
     subparsers.add_parser("scan-secrets", help="scan staged changes for secrets (pre-commit)")
@@ -224,6 +230,11 @@ def _main(argv: list[str] | None = None) -> int:
         from gea.pr import run_pr
 
         return run_pr(args.task_id, assume_yes=args.yes)
+
+    if args.command == "guide":
+        from gea.guide import run_guide
+
+        return run_guide(args.topic, args.lang)
 
     if args.command == "status":
         from gea.status import run_status

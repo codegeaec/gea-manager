@@ -26,7 +26,7 @@ implement. Always read: `AGENTS.md` and any doc the task points to.
 
 Diagnose it yourself (reproduce, inspect logs/code, find the root cause,
 apply the smallest fix that solves it) and note cause + fix in
-*Implementation Notes*. Check `.agents/gotchas.md` first.
+*Implementation Notes*. Check `.agents/gotchas.md` first. Lost? `gea guide build`.
 
 ## Project
 

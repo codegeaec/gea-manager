@@ -20,7 +20,8 @@ touching code. Everything project-specific is at the end, under `## Project`.
 
 Non-trivial changes go through a task before being implemented. See
 `.agents/builder.md` for the implement→review→close cycle, and use `gea task
-new` / `gea subtask new` / `gea delegate` to drive it.
+new` / `gea subtask new` / `gea delegate` to drive it. Command cheat sheet:
+`.agents/gea.md`; step-by-step guides: `gea guide`.
 
 ## Directories
 

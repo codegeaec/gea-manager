@@ -220,6 +220,18 @@ def run_init(
     for path in written:
         ui.ok(f"{path} written")
 
+    clis = [c for c in scaffold.COMMAND_DIRS if platform.which(c)]
+    if clis and ui.ask_yes_no(
+        f"Add /gea-plan, /gea-delegate, /gea-review slash commands for {', '.join(clis)}?",
+        default=True,
+        assume_yes=assume_yes,
+    ):
+        for path in scaffold.write_slash_commands(repo_root, agents_lang, clis):
+            ui.ok(f"{path} written")
+    readme = scaffold.ensure_readme(repo_root, agents_lang, project_name, tasks_root_display)
+    if readme != "unchanged":
+        ui.ok(f"README.md {readme}")
+
     if ui.ask_yes_no(
         "Set up a docs/ system (INDEX.md, vision, ADR template)?",
         default=True,
