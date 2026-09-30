@@ -83,7 +83,7 @@ def test_workspace_starts_the_primary_agent_as_prefix_dash_cli(monkeypatch, tmp_
         workspace, "_find_or_create_workspace", lambda label, root: workspace.Workspace("wA")
     )
     monkeypatch.setattr(
-        workspace, "_ensure_agent_tab", lambda *a, **k: started.append(a[-1]) or False
+        workspace, "_ensure_agent_tab", lambda *a, **k: started.append(a[5]) or False
     )
     monkeypatch.setattr(workspace, "_ensure_plain_tab", lambda *a, **k: None)
     monkeypatch.setattr(workspace, "herdr_json", lambda cmd, timeout=15: ({}, "agent_not_found"))

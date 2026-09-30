@@ -9,7 +9,7 @@ narrow this down to a subset of ids for that project only.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
 from gea import config, platform, proc
@@ -130,18 +130,16 @@ def pick_agent(
     repo_root: Path | None = None,
     tier: str | None = None,
 ) -> AgentProfile | None:
-    """First available builder: not exhausted, allowed by the project's
-    `builders.allow`, and not in `exclude_pools`. With `agent_id`, only that
-    profile qualifies."""
+    """First available builder: one of the project's subagents (`agents.subagents`,
+    in priority order), not exhausted, and not in `exclude_pools`. With `agent_id`,
+    only that profile qualifies."""
     pools = state.load()
-    builders = config.load_project(repo_root or Path.cwd()).get("builders", {})
-    allow = builders.get("allow")
+    cfg = config.load_project(repo_root or Path.cwd())
+    builders = cfg.get("builders", {})
     candidates = [
         p
-        for p in load_profiles()
-        if (not allow or p.id in allow)
-        and p.pool not in exclude_pools
-        and state.is_pool_available(p.pool, pools)
+        for p in resolve_subagents(cfg)
+        if p.pool not in exclude_pools and state.is_pool_available(p.pool, pools)
     ]
     if agent_id:
         return next((p for p in candidates if p.id == agent_id), None)
@@ -178,3 +176,63 @@ def rank_for_tier(
         return sum(1 for e in mine if e.get("result") == "done" and e.get("verify_ok")) / len(mine)
 
     return sorted(candidates, key=lambda p: -score(p))
+
+
+# agy serves several model families with separate quotas (see AGY_PROFILES).
+AGY_FAMILY_POOLS = (("gemini", "agy-gemini"), ("claude", "agy-claude"), ("gpt-oss", "agy-gpt-oss"))
+
+
+def default_pool(cli: str, model: str | None) -> str:
+    """The quota pool a custom subagent falls into when none is given: models
+    behind one provider/account share a quota, so `opencode-go/x` -> `opencode-go`."""
+    if cli == "agy":
+        for prefix, pool in AGY_FAMILY_POOLS:
+            if model and model.startswith(prefix):
+                return pool
+        return "agy-gemini"  # agy's own default model
+    if model and "/" in model:
+        return model.split("/", 1)[0]
+    return cli
+
+
+def resolve_subagents(
+    cfg: dict, detected: list[AgentProfile] | None = None
+) -> list[AgentProfile]:
+    """The project's subagents as profiles, in priority order (list position).
+
+    Entries of `agents.subagents`: an id of a detected profile; a dict with such an
+    id and no `cli` (overrides its model/pool); or a dict with `cli` (custom).
+    No list at all means every detected profile. Unknown ids are skipped (see
+    `unknown_subagent_ids`)."""
+    detected = load_profiles() if detected is None else detected
+    entries = config.agents(cfg).subagents
+    if not entries:
+        return list(detected)
+    by_id = {p.id: p for p in detected}
+    resolved = []
+    for position, entry in enumerate(entries, start=1):
+        item = {"id": entry} if isinstance(entry, str) else entry
+        base = by_id.get(item["id"])
+        if item.get("cli"):  # custom (it may reuse a detected id: then it replaces it)
+            model = item.get("model")
+            pool = item.get("pool") or default_pool(item["cli"], model)
+            resolved.append(AgentProfile(item["id"], item["cli"], model, pool, position))
+        elif base:
+            model = item.get("model", base.model)
+            pool = item.get("pool") or (
+                default_pool(base.cli, model) if model != base.model else base.pool
+            )
+            resolved.append(replace(base, model=model, pool=pool, priority=position))
+    return resolved
+
+
+def unknown_subagent_ids(cfg: dict, detected: list[AgentProfile] | None = None) -> list[str]:
+    """Ids in `agents.subagents` that match no detected profile and define no `cli`."""
+    detected = load_profiles() if detected is None else detected
+    known = {p.id for p in detected}
+    return [
+        item["id"]
+        for entry in (config.agents(cfg).subagents or [])
+        if not (item := {"id": entry} if isinstance(entry, str) else entry).get("cli")
+        and item["id"] not in known
+    ]

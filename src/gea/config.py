@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from gea import dryrun, paths
+from gea.agents import spec
 
 # Bumped whenever a file's shape changes incompatibly. There are no
 # migrations yet: a file written by a *newer* gea is refused on load
@@ -46,14 +47,13 @@ DEFAULT_GLOBAL_CONFIG: dict[str, Any] = {
 DEFAULT_PROJECT_CONFIG: dict[str, Any] = {
     "schema_version": SCHEMA_VERSION,
     "name": None,
-    "primary": None,
-    # Only meaningful when primary == "claude": sent as "/model <value>" to
-    # the claude tab the first time gea creates it (see workspace.py). None
-    # means don't set a model automatically.
-    "primaryModel": None,
+    # Planner CLI + model and the subagents it delegates to: see agents/spec.py.
+    # (Read via `agents(cfg)`; the old `primary`/`primaryModel`/`builders.allow`
+    # keys are still understood.)
+    "agents": {},
     "tasks": {"location": "home"},
     "verify": [],
-    "builders": {"mode": "ask", "allow": [], "ponytail": True},
+    "builders": {"mode": "ask", "ponytail": True},
     "lang": {"commits": "es", "docs": "es"},
     "pm": None,
     # Extra herdr tabs `gea` opens next to the agent and `terminal`, e.g. for a
@@ -85,14 +85,20 @@ def validate(data: dict[str, Any], path: Path) -> None:
             f"{path}: builders.permissions must be one of {', '.join(PERMISSION_MODES)}"
         )
     _validate_worktree_setup(builders.get("worktree", {}), path)
+    _validate_agents(data, path)
     _validate_tabs(data, path)
+
+
+def _validate_agents(data: dict[str, Any], path: Path) -> None:
+    for message in spec.problems(data.get("agents") or {}):
+        raise ConfigError(f"{path}: {message}")
 
 
 def _validate_tabs(data: dict[str, Any], path: Path) -> None:
     tabs = data.get("tabs", [])
     if not isinstance(tabs, list):
         raise ConfigError(f"{path}: tabs must be a list")
-    taken = {(data.get("primary") or "claude").lower(), "terminal"}
+    taken = {spec.from_config(data).planner.lower(), "terminal"}
     for entry in tabs:
         label = entry.get("label") if isinstance(entry, dict) else None
         if not isinstance(label, str) or not label.strip():
@@ -158,8 +164,27 @@ def save_global(data: dict[str, Any]) -> None:
 # Team mode: `gea.json` is the project's policy (committed, shared) and
 # `gea.local.json` (gitignored) holds this person's own choices, which win
 # on load. These are the keys that belong in the personal file.
-PERSONAL_KEYS = ("primary", "primaryModel")
-PERSONAL_BUILDER_KEYS = ("allow", "mode")
+PERSONAL_KEYS = ("agents",)
+LEGACY_KEYS = ("primary", "primaryModel")  # replaced by `agents`; dropped on save
+PERSONAL_BUILDER_KEYS = ("mode",)
+
+
+def agents(cfg: dict[str, Any]) -> spec.AgentsSpec:
+    """The project's planner and subagents (see agents/spec.py)."""
+    return spec.from_config(cfg)
+
+
+def store_agents(cfg: dict[str, Any], value: spec.AgentsSpec) -> None:
+    """Put `value` into `cfg` under the `agents` key, dropping the old keys it replaces."""
+    cfg["agents"] = value.to_dict()
+    for key in LEGACY_KEYS:
+        cfg.pop(key, None)
+    cfg.get("builders", {}).pop("allow", None)
+
+
+def set_planner(cfg: dict[str, Any], cli: str, model: str | None = None) -> None:
+    current = agents(cfg)
+    store_agents(cfg, spec.AgentsSpec(cli, model, current.subagents))
 
 
 def agents_lang(cfg: dict[str, Any]) -> str:
@@ -200,15 +225,19 @@ def load_project(repo_root: Path) -> dict[str, Any]:
         raise ConfigError(f"{local_path}: expected a JSON object")
     personal.pop("schema_version", None)
     merged = _deep_merge(shared, personal)
+    _validate_agents(merged, local_path)
     _validate_tabs(merged, local_path)  # a personal tabs list replaces the shared one
     return merged
 
 
 def split_project(data: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     """Split a merged config into (shared policy, personal choices)."""
-    shared = {k: v for k, v in data.items() if k not in PERSONAL_KEYS}
-    personal = {k: data[k] for k in PERSONAL_KEYS if data.get(k) is not None}
+    shared = {k: v for k, v in data.items() if k not in (*PERSONAL_KEYS, *LEGACY_KEYS)}
+    personal = {}
+    if agents_dict := spec.from_config(data).to_dict():  # also migrates the old keys
+        personal["agents"] = agents_dict
     builders = dict(shared.get("builders", {}))
+    builders.pop("allow", None)  # now `agents.subagents`
     defaults = DEFAULT_PROJECT_CONFIG["builders"]
     popped = {k: builders.pop(k) for k in PERSONAL_BUILDER_KEYS if k in builders}
     if "builders" in shared:

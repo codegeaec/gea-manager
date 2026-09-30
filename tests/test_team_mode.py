@@ -18,15 +18,17 @@ def test_local_file_wins_over_shared_with_deep_merge(tmp_path):
 
 def test_save_splits_policy_from_personal_choices(tmp_path):
     data = config.load_project(tmp_path)
-    data.update(name="demo", primary="codex", primaryModel="opusplan", verify=["pytest"])
-    data["builders"] = {"mode": "auto", "allow": ["a"], "ponytail": True}
+    planner = {"planner": "codex", "plannerModel": "gpt-5.5"}
+    data.update(name="demo", agents=planner, verify=["pytest"])
+    data["builders"] = {"mode": "auto", "ponytail": True}
     config.save_project(tmp_path, data)
 
     shared = json.loads((tmp_path / "gea.json").read_text())
     local = json.loads((tmp_path / "gea.local.json").read_text())
-    assert "primary" not in shared and "allow" not in shared["builders"]
+    assert "agents" not in shared and "primary" not in shared
     assert shared["verify"] == ["pytest"] and shared["builders"]["ponytail"] is True
-    assert local["primary"] == "codex" and local["builders"] == {"allow": ["a"], "mode": "auto"}
+    assert local["agents"] == {"planner": "codex", "plannerModel": "gpt-5.5"}
+    assert local["builders"] == {"mode": "auto"}
     assert config.load_project(tmp_path) == data | {"schema_version": 1} | {}
 
 

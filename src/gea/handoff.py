@@ -5,7 +5,7 @@ actually in flight (tasks in progress/review, git state, pending
 checkpoints, exhausted pools). The conversation itself is never transferred
 — tasks are the durable memory (see gea-plan), which is why this works
 across CLIs. With `--to`, the new orchestrator is started in a herdr pane
-and pointed at the file; `gea.json["primary"]` follows after confirmation.
+and pointed at the file; `agents.planner` follows after confirmation.
 """
 
 from __future__ import annotations
@@ -133,10 +133,10 @@ def run_handoff(to: str | None = None, assume_yes: bool = False) -> int:
         }
     )
     cfg = config.load_project(root)
-    if cfg.get("primary") != to and ui.ask_yes_no(
+    if config.agents(cfg).planner != to and ui.ask_yes_no(
         t("handoff.make_primary", to=to), default=True, assume_yes=assume_yes
     ):
-        cfg["primary"] = to
+        config.set_planner(cfg, to)
         config.save_project(root, cfg)
         ui.ok(t("handoff.primary_set", to=to))
     return 0

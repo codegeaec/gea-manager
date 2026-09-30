@@ -3,8 +3,9 @@
 Tabs, idempotent by label (ported from the old herdr-setup gist's
 `herdr-repo`, minus the llama.cpp/WSL-specific opencode-roles logic):
 
-- `<primary>` — the project's primary agent (gea.json["primary"],
-  "claude" if unset), an interactive CLI tab. On a brand-new workspace it
+- `<planner>` — the project's planner agent (`agents.planner`, "claude" if
+  unset, started with `agents.plannerModel` when the CLI has a model flag), an
+  interactive CLI tab. On a brand-new workspace it
   reuses the tab herdr creates with the workspace, so no stray "1" is left.
 - `terminal` — a plain shell, for anything else the user wants to run by hand.
 - one tab per entry of gea.json["tabs"] (`label`, `cwd` relative to the repo,
@@ -105,6 +106,7 @@ def _ensure_agent_tab(
     cli: str,
     initial: tuple[str, str] | None = None,
     agent_name: str | None = None,
+    model: str | None = None,
 ) -> bool:
     """Make the `<label>` tab and start `cli` in it if it doesn't exist yet
     (reusing `initial` = (tab_id, pane_id), the tab a new workspace comes
@@ -122,6 +124,8 @@ def _ensure_agent_tab(
     start_args = [
         "agent", "start", agent_name or label, "--kind", cli, "--pane", pane_id, "--",
     ] + cli_cfg["base"]
+    if model:  # claude has no start flag: its model goes in through /model afterwards
+        start_args += [flag.format(model=model) for flag in cli_cfg["model"]]
     _result, err = herdr_json(start_args, timeout=65)
     if err:
         ui.warn(f"tab '{label}' created but agent failed to start ({err})")
@@ -160,7 +164,8 @@ def _ensure_extra_tabs(workspace_id: str, repo_root: Path, tabs: list[dict]) -> 
 def open_or_focus() -> int:
     repo_root = _find_repo_root()
     cfg = config.load_project(repo_root)
-    primary = cfg.get("primary") or "claude"
+    planner = config.agents(cfg)
+    primary = planner.planner
     label = _safe_label(repo_root.name)
 
     workspace = _find_or_create_workspace(label, repo_root)
@@ -175,12 +180,14 @@ def open_or_focus() -> int:
     )
 
     name = free_agent_name(agent_name(project_prefix(repo_root), primary), workspace_id)
-    created = _ensure_agent_tab(workspace_id, repo_root, primary, primary, initial, name)
+    created = _ensure_agent_tab(
+        workspace_id, repo_root, primary, primary, initial, name, planner.planner_model
+    )
     _ensure_plain_tab(workspace_id, repo_root, "terminal")
     _ensure_extra_tabs(workspace_id, repo_root, cfg.get("tabs", []))
 
     if created and primary == "claude":
-        model = cfg.get("primaryModel")
+        model = planner.planner_model
         if model:
             ui.ok(f"setting /model {model} in the claude tab")
             prompt_pane(name, f"/model {model}", wait=False)

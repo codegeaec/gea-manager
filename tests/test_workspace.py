@@ -287,3 +287,31 @@ def test_the_agent_is_started_under_the_project_specific_name(monkeypatch, tmp_p
     )
     assert herdr.named("agent", "start")[0][2] == "claude-demo"
     assert herdr.named("tab", "rename") == [["tab", "rename", "t1", "claude"]]  # tab label stays
+
+
+def test_a_non_claude_planner_gets_its_model_as_a_start_flag(monkeypatch, tmp_path):
+    herdr = FakeHerdr()
+    monkeypatch.setattr(workspace, "herdr_json", herdr)
+    workspace._ensure_agent_tab("ws-1", tmp_path, "codex", "codex", None, "cod-codex", "gpt-5.5")
+    tail = herdr.named("agent", "start")[0]
+    assert tail[tail.index("--") + 1 :] == ["-m", "gpt-5.5"]
+
+
+def test_claude_planner_model_is_set_through_slash_model_not_a_flag(monkeypatch, tmp_path):
+    (tmp_path / "gea.json").write_text("{}")
+    (tmp_path / "gea.local.json").write_text(
+        '{"agents": {"planner": "claude", "plannerModel": "opusplan"}}'
+    )
+    monkeypatch.setenv("HERDR_ENV", "1")
+    monkeypatch.setattr(workspace, "_find_repo_root", lambda: tmp_path)
+    monkeypatch.setattr(workspace, "_find_or_create_workspace", _ws1)
+    seen = {}
+    monkeypatch.setattr(
+        workspace, "_ensure_agent_tab", lambda *a, **k: seen.setdefault("model", a[6]) or True
+    )
+    monkeypatch.setattr(workspace, "_ensure_plain_tab", lambda *a, **k: None)
+    monkeypatch.setattr(workspace, "herdr_json", lambda cmd, timeout=15: ({}, None))
+    prompts = []
+    monkeypatch.setattr(workspace, "prompt_pane", lambda pane, msg, wait=True: prompts.append(msg))
+    workspace.open_or_focus()
+    assert seen["model"] == "opusplan" and prompts == ["/model opusplan"]
