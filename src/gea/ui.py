@@ -90,3 +90,51 @@ def ask_multi(
     except ValueError:
         return default
     return picked if all(0 <= i < len(options) for i in picked) else default
+
+
+def ask_text(question: str, default: str | None = None, assume_yes: bool = False) -> str | None:
+    """Free text; empty input gives `default` (None when there is none)."""
+    if assume_yes:
+        return default
+    suffix = f" [{default}]" if default else ""
+    return input(f"{question}{suffix} ").strip() or default
+
+
+def ask_pick(
+    question: str,
+    options: list[str],
+    default: str | None = None,
+    assume_yes: bool = False,
+    free_text: bool = False,
+    page: int = 15,
+) -> str | None:
+    """Pick one of `options` from a possibly long list: type its number, or type
+    text to filter the list. Empty input gives `default`. With `free_text`, text
+    that matches nothing is returned as typed (for values the CLI cannot list).
+    Returns None if nothing was chosen."""
+    if assume_yes:
+        return default
+    shown = options
+    for _ in range(50):  # never spin forever on bad input
+        print(question)
+        for i, option in enumerate(shown[:page], start=1):
+            print(f"  {i}) {option}")
+        if len(shown) > page:
+            print(f"  … {len(shown) - page} more — type text to filter")
+        raw = input(f"> [{default or ''}] ").strip()
+        if not raw:
+            return default
+        if raw.isdigit():
+            index = int(raw) - 1
+            if 0 <= index < min(len(shown), page):
+                return shown[index]
+            continue
+        matches = [o for o in options if raw.lower() in o.lower()]
+        if matches:
+            shown = matches
+        elif free_text:
+            return raw
+        else:
+            print("  (no match)")
+            shown = options
+    return None

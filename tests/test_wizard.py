@@ -1,25 +1,10 @@
-from gea.init import wizard
-
-
-def test_pick_primary_model_returns_none_for_non_claude():
-    assert wizard._pick_primary_model("opencode") is None
-
-
-def test_pick_primary_model_returns_opusplan_when_accepted(monkeypatch):
-    monkeypatch.setattr(wizard.ui, "ask_yes_no", lambda *a, **k: True)
-    assert wizard._pick_primary_model("claude") == "opusplan"
-
-
-def test_pick_primary_model_returns_none_when_declined(monkeypatch):
-    monkeypatch.setattr(wizard.ui, "ask_yes_no", lambda *a, **k: False)
-    assert wizard._pick_primary_model("claude") is None
-
-
+import json  # noqa: E402
 import subprocess  # noqa: E402
 
 import pytest  # noqa: E402
 
 from gea import config  # noqa: E402
+from gea.init import wizard
 
 
 @pytest.fixture
@@ -78,12 +63,40 @@ def test_ask_multi_parses_numbers_and_defaults(monkeypatch):
     assert ui.ask_multi("q", opts, assume_yes=True) == [0, 1, 2]
 
 
-def test_project_builders_are_the_ones_the_user_picked(monkeypatch):
+
+def test_wizard_writes_planner_and_model_into_the_personal_agents_key(repo):
+    wizard.run_init(assume_yes=True, langs=("es", "es", "es"))
+    local = json.loads((repo / "gea.local.json").read_text())
+    assert local["agents"] == {"planner": "claude", "plannerModel": "opusplan"}
+    shared = json.loads((repo / "gea.json").read_text())
+    assert not {"primary", "primaryModel", "agents"} & set(shared)
+
+
+def test_pick_agents_keeps_all_detected_unless_the_user_narrows_them(monkeypatch):
     from gea.agents.profiles import AgentProfile
 
+    monkeypatch.setattr(wizard.manage, "installed_clis", lambda: ["claude"])
     profs = [AgentProfile("a", "a", None, "pa", 1), AgentProfile("b", "b", "m", "pb", 2)]
+    assert wizard._pick_agents(profs, assume_yes=True).subagents is None
     monkeypatch.setattr(wizard.ui, "ask_multi", lambda *a, **k: [1])
-    assert wizard._pick_builders(profs) == ["b"]
-    monkeypatch.setattr(wizard.ui, "ask_multi", lambda *a, **k: [])
-    assert wizard._pick_builders(profs) == ["a", "b"]  # never end up with nobody
-    assert wizard._pick_builders([]) == []
+    monkeypatch.setattr(wizard.ui, "ask_choice", lambda *a, **k: 0)
+    monkeypatch.setattr(wizard.manage, "pick_model", lambda *a, **k: None)
+    monkeypatch.setattr(wizard.ui, "ask_yes_no", lambda *a, **k: False)
+    assert wizard._pick_agents(profs).subagents == ["b"]
+    assert wizard._pick_agents([], assume_yes=True).subagents is None
+
+
+def test_pick_agents_can_add_a_custom_subagent(monkeypatch):
+    from gea.agents import spec
+    from gea.agents.profiles import AgentProfile
+
+    monkeypatch.setattr(wizard.manage, "installed_clis", lambda: ["claude"])
+    monkeypatch.setattr(wizard.ui, "ask_choice", lambda *a, **k: 0)
+    monkeypatch.setattr(wizard.manage, "pick_model", lambda *a, **k: None)
+    monkeypatch.setattr(wizard.ui, "ask_multi", lambda *a, **k: [0])
+    answers = iter([True, False])  # add one custom, then stop
+    monkeypatch.setattr(wizard.ui, "ask_yes_no", lambda *a, **k: next(answers))
+    custom = spec.AgentsSpec("claude", None, ["a", {"id": "x", "cli": "opencode"}])
+    monkeypatch.setattr(wizard.manage, "prompt_custom", lambda value, det: custom)
+    got = wizard._pick_agents([AgentProfile("a", "a", None, "pa", 1)])
+    assert got.subagents == ["a", {"id": "x", "cli": "opencode"}]

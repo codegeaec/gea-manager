@@ -8,6 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from gea import config, doctor, dryrun, platform, proc, secrets, ui
+from gea.agents import manage, spec
 from gea.agents.profiles import load_profiles, refresh_and_save
 from gea.i18n import t
 from gea.init import detect, report, scaffold
@@ -17,36 +18,6 @@ from gea.tasks import importer, store
 
 def _tasks_root_display(cfg: dict) -> str:
     return str(store.task_root(Path.cwd())) if cfg else ""
-
-
-def _pick_primary_agent(assume_yes: bool = False) -> str:
-    candidates = [c for c in ("claude", "opencode", "codex", "agy", "kimi") if platform.which(c)]
-    if not candidates:
-        return "claude"
-    if "claude" in candidates:
-        default = candidates.index("claude")
-    else:
-        default = 0
-    choice = ui.ask_choice(
-        "Primary agent" + (" (claude recommended)" if "claude" in candidates else ""),
-        candidates,
-        default_index=default,
-        assume_yes=assume_yes,
-    )
-    return candidates[choice]
-
-
-def _pick_primary_model(primary: str, assume_yes: bool = False) -> str | None:
-    """Only for Claude: gea can send "/model opusplan" to the claude tab
-    the first time it's created (see workspace.py), so the orchestrator
-    starts on the right model without the user typing it by hand on every
-    fresh project."""
-    if primary != "claude":
-        return None
-    question = "Automatically set /model opusplan in the claude tab? (recommended)"
-    if ui.ask_yes_no(question, default=True, assume_yes=assume_yes):
-        return "opusplan"
-    return None
 
 
 def _pick_tasks_location(assume_yes: bool = False) -> str:
@@ -101,17 +72,26 @@ def _pick_autonomy(assume_yes: bool = False) -> str:
     return levels[choice]
 
 
-def _pick_builders(all_profiles, assume_yes: bool = False) -> list[str]:
-    """Which detected builder agents this project may delegate to."""
-    if not all_profiles:
-        return []
-    labels = [f"{p.id} ({p.cli}{' ' + p.model if p.model else ''})" for p in all_profiles]
+def _pick_agents(detected, assume_yes: bool = False) -> spec.AgentsSpec:
+    """Planner (+ its model) and subagents, with the same prompts `gea agents
+    manage` uses: models come from the CLIs' own lists."""
+    value = manage.prompt_planner(spec.AgentsSpec(), assume_yes)
+    if not detected:
+        return value
+    labels = [f"{p.id} ({p.cli}{' ' + p.model if p.model else ''})" for p in detected]
     picked = ui.ask_multi(
-        "Builder agents this project may use (comma-separated, empty = all)",
+        "Subagents this project may delegate to (comma-separated, empty = all detected)",
         labels,
         assume_yes=assume_yes,
     )
-    return [all_profiles[i].id for i in picked] or [p.id for p in all_profiles]
+    chosen = [detected[i].id for i in picked] or [p.id for p in detected]
+    if len(chosen) < len(detected):
+        value = spec.AgentsSpec(value.planner, value.planner_model, chosen)
+    while not assume_yes and ui.ask_yes_no(
+        "Add a custom subagent (another model of an installed CLI)?", default=False
+    ):
+        value = manage.prompt_custom(value, detected) or value
+    return value
 
 
 def _warn_missing_tools() -> None:
@@ -143,8 +123,6 @@ def run_init(
     report.print_report(state)
 
     project_name = repo_root.name
-    primary = _pick_primary_agent(assume_yes)
-    primary_model = _pick_primary_model(primary, assume_yes)
     tasks_location = _pick_tasks_location(assume_yes)
     agents_lang, docs_lang, commit_lang = _pick_langs(langs, assume_yes)
     autonomy = _pick_autonomy(assume_yes)
@@ -165,22 +143,21 @@ def run_init(
         if not ui.ask_yes_no("Use these?", default=True, assume_yes=assume_yes):
             verify_commands = []
 
-    allow = _pick_builders(load_profiles() or refresh_and_save(), assume_yes)
+    agents_spec = _pick_agents(load_profiles() or refresh_and_save(), assume_yes)
 
     cfg = config.DEFAULT_PROJECT_CONFIG.copy()
     cfg.update(
         {
             "name": project_name,
-            "primary": primary,
-            "primaryModel": primary_model,
             "tasks": {"location": tasks_location},
             "verify": verify_commands,
-            "builders": {"mode": "ask", "allow": allow, "ponytail": ponytail},
+            "builders": {"mode": "ask", "ponytail": ponytail},
             "autonomy": autonomy,
             "lang": {"agents": agents_lang, "commits": commit_lang, "docs": docs_lang},
             "pm": pm,
         }
     )
+    config.store_agents(cfg, agents_spec)
     config.save_project(repo_root, cfg)
     ui.ok("gea.json written")
 
@@ -276,6 +253,7 @@ def run_init(
             importer.import_layout(layout, repo_root)
 
     ui.info(t("init.builders_hint"))
+    ui.info(t("init.agents_hint"))
     ui.ok("gea init complete")
     return 0
 
