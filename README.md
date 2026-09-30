@@ -30,18 +30,35 @@ historial del chat.
 
 ## Instalación
 
+El repositorio es **privado**: solo pueden instalar gea las cuentas de GitHub
+con acceso a `codegeaec/gea-manager` (pídeselo al dueño). La instalación usa tu
+sesión del [GitHub CLI](https://cli.github.com) (`gh`); no se guarda ningún
+token en disco.
+
 En Linux, macOS o WSL:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/codegeaec/gea-manager/main/install.sh | bash
+gh auth login   # solo si aún no has iniciado sesión
+gh api -H "Accept: application/vnd.github.raw" \
+  repos/codegeaec/gea-manager/contents/install.sh | bash
 ```
 
-En Windows, desde PowerShell (instala WSL2 y Ubuntu si hace falta y ejecuta
-`install.sh` dentro):
+El instalador instala `gh` y `uv` si faltan, comprueba que tu cuenta ve el
+repositorio, instala gea y ejecuta `gea setup`. **Para actualizar gea, vuelve a
+correr el mismo comando**: reinstala la última versión de `main`.
+
+En Windows, desde PowerShell (necesita `gh`: `winget install GitHub.cli`,
+`gh auth login`). Instala WSL2 y Ubuntu si hace falta y ejecuta `install.sh`
+dentro:
 
 ```powershell
-irm https://raw.githubusercontent.com/codegeaec/gea-manager/main/install.ps1 | iex
+gh api -H "Accept: application/vnd.github.raw" `
+  repos/codegeaec/gea-manager/contents/install.ps1 | iex
 ```
+
+Si prefieres hacerlo a mano, con acceso al repositorio: `uv tool install
+"git+https://github.com/codegeaec/gea-manager"` (git debe poder autenticarse,
+por ejemplo tras `gh auth setup-git`).
 
 ## Inicio rápido
 
