@@ -10,6 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from gea import config, dryrun, manifest, proc, ui
+from gea.setup import skills_manual
 
 # Third-party skills recommended by gea. Each entry points at one exact
 # skill subpath, not a bare repo — several of these repos bundle many
@@ -71,6 +72,16 @@ def sync_third_party_skills(installed_agents: list[str]) -> list[str]:
     return synced
 
 
+def sync_all_skills(installed_agents: list[str]) -> list[str]:
+    """Third-party, user-invoked-only and gea's own skills for every detected agent."""
+    agent_ids = [SKILLS_AGENT_IDS[a] for a in installed_agents if a in SKILLS_AGENT_IDS]
+    return (
+        sync_third_party_skills(installed_agents)
+        + (skills_manual.sync_manual_skills(agent_ids) if agent_ids else [])
+        + sync_gea_skills(installed_agents)
+    )
+
+
 def sync_gea_skills(installed_agents: list[str]) -> list[str]:
     """Install this repo's own skills/gea-* for every detected agent."""
     agent_ids = [SKILLS_AGENT_IDS[a] for a in installed_agents if a in SKILLS_AGENT_IDS]
@@ -100,6 +111,8 @@ def dispatch_skills(args) -> int:
         for name, source in OPTIONAL_SKILLS.items():
             state = "on" if is_optional_enabled(name) else "off"
             print(f"{source} (optional: {name}, {state})")
+        for source, names in skills_manual.MANUAL_SKILLS.items():
+            print(f"{source} (user-invoked only: /{', /'.join(names)})")
         if GEA_SKILLS_DIR.exists():
             for skill_dir in sorted(GEA_SKILLS_DIR.iterdir()):
                 if skill_dir.is_dir():
@@ -108,9 +121,7 @@ def dispatch_skills(args) -> int:
 
     if args.skills_command == "sync":
         dryrun.enable(getattr(args, "dry_run", False))
-        third_party = sync_third_party_skills(installed)
-        gea_skills = sync_gea_skills(installed)
-        for name in third_party + gea_skills:
+        for name in sync_all_skills(installed):
             print(f"✓ {name}")
         return 0
 

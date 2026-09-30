@@ -141,7 +141,7 @@ def _step_global_instructions(installed_agents: list[agents_install.AgentCli]) -
 
 def _step_skills_sync(installed_agents: list[agents_install.AgentCli]) -> None:
     ids = [a.id for a in installed_agents]
-    synced = skills.sync_third_party_skills(ids) + skills.sync_gea_skills(ids)
+    synced = skills.sync_all_skills(ids)
     if synced:
         ui.ok(f"skills synced: {', '.join(synced)}")
 

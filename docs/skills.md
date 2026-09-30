@@ -42,3 +42,12 @@ list pointed at `vercel-labs/agent-skills` — a 9-skill Vercel-deploy
 bundle that happens to share a similar name, but has neither grill-me nor
 find-skills in it. `test_skills.py::test_third_party_skills_point_at_a_
 single_skill_subpath` guards against that regression.)
+
+## User-invoked-only skills
+
+`gea skills sync` (and `gea setup`/`gea update`) also installs skills that the
+agent must never pick on its own — you run them explicitly as `/<skill>`.
+Today: `security-audit` from `cloudflare/security-audit-skill`. gea sets
+`disable-model-invocation: true` in its `SKILL.md` (Claude Code) and
+`allow_implicit_invocation: false` in `agents/openai.yaml` (Codex) after every
+sync. The list lives in `MANUAL_SKILLS` (`src/gea/setup/skills_manual.py`).
