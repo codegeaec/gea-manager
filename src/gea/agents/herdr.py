@@ -191,20 +191,71 @@ def start_agent_pane(
     if not pane_id:
         return f"could not create pane for {pane_name} ({err})"
 
-    start_args = [
-        "agent", "start", pane_name, "--kind", cli, "--pane", pane_id,
-        "--timeout", "60000", "--",
-    ]
-    cli_cfg = CLI_ARGS.get(cli, DEFAULT_CLI_ARGS)
-    start_args += cli_cfg["base"] + list(extra_args or [])
-    if model:
-        start_args += [flag.format(model=model) for flag in cli_cfg["model"]]
-    result, err = herdr_json(start_args, timeout=65)
-    if err == "agent_not_ready":
+    args = cli_cfg_args(cli, model, extra_args)
+    state, info = _run_start(pane_name, cli, pane_id, args)
+    if state == "dead" and _needs_no_daemon(cli, info, args):
+        state, info = _run_start(pane_name, cli, pane_id, args + [CODEX_NO_DAEMON])
+    if state == "blocked":
         return f"BLOCKED {pane_name} — started but is waiting on a confirmation dialog"
-    outcome = "started" if result else f"FAILED ({err or ''})"
+    if state == "dead":
+        herdr_json(["pane", "close", pane_id])  # nothing useful is left in it
+        return f"FAILED ({cli} did not start; last output of its pane:\n{info.strip()})"
+    if state == "failed":
+        return f"FAILED ({info})"
     model_suffix = f" {model}" if model else ""
-    return f"{outcome} {pane_name} ({cli}{model_suffix})"
+    return f"started {pane_name} ({cli}{model_suffix})"
+
+
+CODEX_NO_DAEMON = "--no-daemon"
+CODEX_DAEMON_ERROR = "shared background server"
+STARTUP_WAIT_S = 10
+
+
+def cli_cfg_args(cli: str, model: str | None, extra_args: list[str] | None) -> list[str]:
+    cli_cfg = CLI_ARGS.get(cli, DEFAULT_CLI_ARGS)
+    args = cli_cfg["base"] + list(extra_args or [])
+    if model:
+        args += [flag.format(model=model) for flag in cli_cfg["model"]]
+    return args
+
+
+def _needs_no_daemon(cli: str, tail: str, args: list[str]) -> bool:
+    """Codex's shared app-server can be stuck and reject new clients; its own
+    advice is to rerun with --no-daemon, which isolates this builder."""
+    return cli == "codex" and CODEX_DAEMON_ERROR in tail and CODEX_NO_DAEMON not in args
+
+
+def _agent_up(pane_name: str) -> bool:
+    """herdr sees a live agent (non-empty kind, status other than unknown)."""
+    deadline = time.monotonic() + STARTUP_WAIT_S
+    while True:
+        info, _err = herdr_json(["agent", "get", pane_name])
+        agent = info.get("agent") or {}
+        if agent.get("agent") and agent.get("agent_status") != "unknown":
+            return True
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(1)
+
+
+def read_pane_id(pane_id: str, lines: int = 15) -> str:
+    out, _err, _code = proc.run(["herdr", "pane", "read", pane_id, "--lines", str(lines)])
+    return out
+
+
+def _run_start(pane_name: str, cli: str, pane_id: str, args: list[str]) -> tuple[str, str]:
+    """`agent start` in `pane_id`, then check the agent really came up. State:
+    ok | blocked | failed (info = herdr error) | dead (info = the pane's last lines)."""
+    cmd = ["agent", "start", pane_name, "--kind", cli, "--pane", pane_id,
+           "--timeout", "60000", "--", *args]
+    result, err = herdr_json(cmd, timeout=65)
+    if err == "agent_not_ready":
+        return "blocked", ""
+    if not result:
+        return "failed", err or ""
+    if _agent_up(pane_name):
+        return "ok", ""
+    return "dead", read_pane_id(pane_id)
 
 
 def missing_integrations(clis: set[str]) -> list[str]:

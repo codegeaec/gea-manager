@@ -85,6 +85,11 @@ def validate(data: dict[str, Any], path: Path) -> None:
             f"{path}: builders.permissions must be one of {', '.join(PERMISSION_MODES)}"
         )
     _validate_worktree_setup(builders.get("worktree", {}), path)
+    agent_args = builders.get("agentArgs", {})
+    if not isinstance(agent_args, dict) or not all(
+        isinstance(v, list) and all(isinstance(a, str) for a in v) for v in agent_args.values()
+    ):
+        raise ConfigError(f"{path}: builders.agentArgs must map a CLI to a list of strings")
     _validate_agents(data, path)
     _validate_tabs(data, path)
 

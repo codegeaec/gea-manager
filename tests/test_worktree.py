@@ -110,7 +110,12 @@ def test_delegate_in_a_worktree_logs_it_and_skips_the_checkpoint(repo, fake_herd
 
 def test_a_worktree_is_removed_when_the_agent_fails_to_start(repo, fake_herdr, monkeypatch):
     _delegate(repo, monkeypatch, start_status="FAILED (x)")
+    deleted = []
+    monkeypatch.setattr(
+        worktree, "delete_branch", lambda wt, root, force=False: deleted.append(force)
+    )
     assert delegate.delegate_task("TASK-001", use_worktree=True) == 1
+    assert deleted == [True]  # the branch goes too, so a retry needs no manual cleanup
     assert ["worktree", "remove", "--workspace", "w9", "--force"] in fake_herdr
     assert not any((paths.gea_home() / "worktrees" / repo.name).iterdir())
 

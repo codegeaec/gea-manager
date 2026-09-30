@@ -147,12 +147,17 @@ def delegate_task(
         agent.cli,
         agent.model,
         wt.path if wt else root,
-        herdr.permission_args(agent.cli, permissions),
+        herdr.permission_args(agent.cli, permissions)
+        + list(builders.get("agentArgs", {}).get(agent.cli, [])),
     )
     print(status)
     if status.startswith("BLOCKED") or "FAILED" in status or "!=" in status:
         if wt:  # a worktree gea just created must not be left half-used
             worktree.remove(wt, root, force=True)
+            worktree.delete_branch(wt, root, force=True)
+            wt = None  # the log entry must not point at a worktree that is gone
+        if "FAILED" in status:
+            ui.err(t("delegate.start_failed", task_id=task_id, agent=agent.id))
         record("blocked" if status.startswith("BLOCKED") else "error")
         return 1
 

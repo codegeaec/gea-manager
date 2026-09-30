@@ -157,5 +157,6 @@
   "init.agents_hint": "Cambia el planner, los modelos o los subagentes cuando quieras con `gea agents manage`.",
   "worktree.not_merged": "la rama {branch} no está integrada en HEAD — worktree conservado en {path}",
   "worktree.hint_yes": "worktree de {task_id} conservado en {path} — corré `gea task done {task_id} --yes` para borrarlo junto con su rama integrada",
-  "worktree.branch_deleted": "rama {branch} borrada"
+  "worktree.branch_deleted": "rama {branch} borrada",
+  "delegate.start_failed": "{task_id} sigue en planned y no quedó nada huérfano (worktree, rama, panel). Arregla el CLI del agente (login, cuota, daemon) o reintenta con `gea delegate {task_id} --agent <otro>` — es un fallo de arranque, no un builder que terminó sin cambios."
 }

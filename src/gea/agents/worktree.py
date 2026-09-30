@@ -105,9 +105,9 @@ def branch_merged(wt: Worktree, repo_root: Path) -> bool:
     return code == 0
 
 
-def delete_branch(wt: Worktree, repo_root: Path) -> bool:
-    """Delete the task branch; `-d` refuses unless it is fully merged."""
-    _out, code = _git(repo_root, "branch", "-d", wt.branch)
+def delete_branch(wt: Worktree, repo_root: Path, force: bool = False) -> bool:
+    """Delete the task branch; without `force`, `-d` refuses unless it is merged."""
+    _out, code = _git(repo_root, "branch", "-D" if force else "-d", wt.branch)
     return code == 0
 
 

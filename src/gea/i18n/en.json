@@ -157,5 +157,6 @@
   "init.agents_hint": "Change the planner, models or subagents any time with `gea agents manage`.",
   "worktree.not_merged": "branch {branch} is not merged into HEAD — worktree kept at {path}",
   "worktree.hint_yes": "worktree of {task_id} kept at {path} — run `gea task done {task_id} --yes` to remove it and its merged branch",
-  "worktree.branch_deleted": "branch {branch} deleted"
+  "worktree.branch_deleted": "branch {branch} deleted",
+  "delegate.start_failed": "{task_id} stays planned and nothing was left behind (worktree, branch, pane). Fix the agent CLI (login, quota, daemon) or retry with `gea delegate {task_id} --agent <other>` — this is a startup failure, not a builder that finished empty."
 }
