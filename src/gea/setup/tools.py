@@ -10,7 +10,9 @@ from gea import platform, proc, ui
 # CLI tools installed via mise (https://mise.jdx.dev) — same binary names
 # on Linux, WSL and macOS, no sudo required. Kept in one place so `gea
 # doctor`/`gea setup`/the global-instructions block all agree on the list.
-MISE_TOOLS = ["gh", "jq", "yq", "ripgrep", "fd", "ast-grep", "just", "duckdb", "shellcheck", "uv"]
+MISE_TOOLS = [
+    "gh", "jq", "yq", "ripgrep", "fd", "ast-grep", "just", "duckdb", "shellcheck", "uv", "lazygit",
+]
 
 # System packages that need the OS package manager (not available via mise
 # as portable binaries, or need to be truly "system", like a compiler).

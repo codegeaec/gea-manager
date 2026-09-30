@@ -6,7 +6,7 @@ Idempotent machine wizard, one step per concern:
 2. **System packages** — `git`, `curl`, `sqlite3`, a compiler, via `apt`/`brew`.
 3. **mise** — installs [mise](https://mise.jdx.dev) if missing, then uses it
    to install `gh`, `jq`, `yq`, `rg`, `fd`, `ast-grep`, `just`, `duckdb`,
-   `shellcheck`, `uv` — no `sudo`, same versions on Linux/WSL/macOS.
+   `shellcheck`, `uv`, `lazygit` — no `sudo`, same versions on Linux/WSL/macOS.
 4. **node** — respects an existing `nvm`/`node`; installs `node@lts` via
    mise only if neither is present.
 5. **herdr** — the terminal workspace manager gea drives everything else

@@ -8,6 +8,7 @@ Tabs, idempotent by label (ported from the old herdr-setup gist's
   interactive CLI tab. On a brand-new workspace it
   reuses the tab herdr creates with the workspace, so no stray "1" is left.
 - `terminal` — a plain shell, for anything else the user wants to run by hand.
+- `git` — lazygit, when it's installed (started only when the tab is created).
 - one tab per entry of gea.json["tabs"] (`label`, `cwd` relative to the repo,
   optional `command` run only when the tab is created), e.g. for monorepos.
 """
@@ -18,7 +19,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from gea import config, proc, ui
+from gea import config, platform, proc, ui
 from gea.agents.herdr import (
     CLI_ARGS,
     DEFAULT_CLI_ARGS,
@@ -140,6 +141,18 @@ def _ensure_plain_tab(workspace_id: str, repo_root: Path, label: str) -> None:
         ui.warn(f"could not create tab '{label}'")
 
 
+def _ensure_git_tab(workspace_id: str, repo_root: Path) -> None:
+    if not platform.which("lazygit") or _existing_tab_id(workspace_id, "git"):
+        return
+    pane_id = _create_tab(workspace_id, repo_root, "git")
+    if not pane_id:
+        ui.warn("could not create tab 'git'")
+        return
+    _result, err = herdr_json(["pane", "run", pane_id, "lazygit"])
+    if err:
+        ui.warn(f"tab 'git': could not start lazygit ({err})")
+
+
 def _ensure_extra_tabs(workspace_id: str, repo_root: Path, tabs: list[dict]) -> None:
     """One tab per gea.json["tabs"] entry. `command` runs only when the tab
     is created here, so reopening the workspace never restarts a dev server."""
@@ -184,6 +197,7 @@ def open_or_focus() -> int:
         workspace_id, repo_root, primary, primary, initial, name, planner.planner_model
     )
     _ensure_plain_tab(workspace_id, repo_root, "terminal")
+    _ensure_git_tab(workspace_id, repo_root)
     _ensure_extra_tabs(workspace_id, repo_root, cfg.get("tabs", []))
 
     if created and primary == "claude":

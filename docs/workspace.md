@@ -13,7 +13,8 @@ opencode-roles logic, which doesn't belong in a general-purpose tool.
      --pane <root pane>`), so no stray "1" tab is left; if the rename fails it
      falls back to a separate tab. Existing workspaces are never touched.
   2. `terminal`, a plain shell.
-  3. One tab per entry of `gea.json["tabs"]` (`label`, `cwd` relative to the
+  3. `git`, running lazygit (if installed).
+  4. One tab per entry of `gea.json["tabs"]` (`label`, `cwd` relative to the
      repo, optional `command`): `tab create --cwd <repo>/<cwd>`, then
      `pane run <pane> <command>` only when the tab was created by this call.
      A missing `cwd` skips that tab with a warning.

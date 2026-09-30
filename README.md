@@ -182,7 +182,8 @@ leen igual y se migran solos al guardar.
    reutiliza el tab con el que herdr lo crea, de modo que no queda un tab `1`
    suelto.
 2. `terminal`, un shell en la raíz del repo.
-3. Los tabs extra que declares en `tabs`.
+3. `git`, con lazygit ejecutándose (si está instalado).
+4. Los tabs extra que declares en `tabs`.
 
 Es idempotente por nombre de tab: volver a correr `gea` no duplica nada y solo
 crea lo que falta. Los agentes reciben nombres `<3 letras del proyecto>-<rol>`
