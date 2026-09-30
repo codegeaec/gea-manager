@@ -91,6 +91,9 @@ def remove(wt: Worktree, repo_root: Path, force: bool = False) -> bool:
     if wt.workspace_id:
         cmd = ["worktree", "remove", "--workspace", wt.workspace_id]
         _result, err = herdr.herdr_json(cmd + (["--force"] if force else []), timeout=60)
+        if err is None:
+            # herdr keeps the emptied workspace as a "(deleted)" tab: close it too.
+            herdr.herdr_json(["workspace", "close", wt.workspace_id])
         return err is None
     args = ["worktree", "remove", str(wt.path)] + (["--force"] if force else [])
     _out, code = _git(repo_root, *args)
