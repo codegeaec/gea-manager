@@ -29,6 +29,13 @@ def _build_parser() -> argparse.ArgumentParser:
 
     init_parser = subparsers.add_parser("init", help="set up the current repo to work with gea")
     init_parser.add_argument("--dry-run", action="store_true", help="report, change nothing")
+    init_parser.add_argument("--yes", action="store_true", help="non-interactive, take defaults")
+    for flag, what in (
+        ("agents", "AGENTS.md, CLAUDE.md and .agents/"),
+        ("docs", "docs/ and task templates"),
+        ("commits", "commit messages"),
+    ):
+        init_parser.add_argument(f"--lang-{flag}", choices=["es", "en"], help=f"language of {what}")
 
     uninstall_parser = subparsers.add_parser("uninstall", help="revert what gea setup changed")
     uninstall_parser.add_argument("--yes", action="store_true", help="skip the confirmation")
@@ -182,7 +189,11 @@ def _main(argv: list[str] | None = None) -> int:
     if args.command == "init":
         from gea.init.wizard import run_init
 
-        return run_init(dry_run=args.dry_run)
+        return run_init(
+            dry_run=args.dry_run,
+            assume_yes=args.yes,
+            langs=(args.lang_agents, args.lang_docs, args.lang_commits),
+        )
 
     if args.command == "uninstall":
         from gea.uninstall import run_uninstall

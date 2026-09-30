@@ -102,6 +102,13 @@ PERSONAL_KEYS = ("primary", "primaryModel")
 PERSONAL_BUILDER_KEYS = ("allow", "mode")
 
 
+def agents_lang(cfg: dict[str, Any]) -> str:
+    """Language of AGENTS.md / .agents/*: `lang.agents`, falling back to
+    `lang.docs` for projects initialised before it was a separate choice."""
+    lang = cfg.get("lang", {})
+    return lang.get("agents") or lang.get("docs") or "en"
+
+
 def project_config_path(repo_root: Path) -> Path:
     return repo_root / "gea.json"
 

@@ -49,7 +49,11 @@ def ask_yes_no(question: str, default: bool = True, assume_yes: bool = False) ->
     return answer in ("y", "yes", "s", "si", "sí")
 
 
-def ask_choice(question: str, options: list[str], default_index: int = 0) -> int:
+def ask_choice(
+    question: str, options: list[str], default_index: int = 0, assume_yes: bool = False
+) -> int:
+    if assume_yes:
+        return default_index
     print(question)
     for i, option in enumerate(options):
         marker = " *" if i == default_index else "  "

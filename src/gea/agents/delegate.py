@@ -136,7 +136,7 @@ def delegate_task(
     prompt = BUILDER_PROMPT_TEMPLATE.format(
         task_id=task_id,
         task_path=task_path,
-        autonomy_line=autonomy.describe(cfg.get("autonomy"), cfg.get("lang", {}).get("docs", "en")),
+        autonomy_line=autonomy.describe(cfg.get("autonomy"), config.agents_lang(cfg)),
     )
     budget = budget_mod.seconds_for(task_path, root)
     out, code, error = herdr.prompt_result(pane_name, prompt, wait=True, budget_s=budget)

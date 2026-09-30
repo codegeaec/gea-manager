@@ -18,7 +18,7 @@ def _tasks_root_display(cfg: dict) -> str:
     return str(store.task_root(Path.cwd())) if cfg else ""
 
 
-def _pick_primary_agent() -> str:
+def _pick_primary_agent(assume_yes: bool = False) -> str:
     candidates = [c for c in ("claude", "opencode", "codex", "agy", "kimi") if platform.which(c)]
     if not candidates:
         return "claude"
@@ -30,11 +30,12 @@ def _pick_primary_agent() -> str:
         "Primary agent" + (" (claude recommended)" if "claude" in candidates else ""),
         candidates,
         default_index=default,
+        assume_yes=assume_yes,
     )
     return candidates[choice]
 
 
-def _pick_primary_model(primary: str) -> str | None:
+def _pick_primary_model(primary: str, assume_yes: bool = False) -> str | None:
     """Only for Claude: gea can send "/model opusplan" to the claude tab
     the first time it's created (see workspace.py), so the orchestrator
     starts on the right model without the user typing it by hand on every
@@ -42,44 +43,73 @@ def _pick_primary_model(primary: str) -> str | None:
     if primary != "claude":
         return None
     question = "Automatically set /model opusplan in the claude tab? (recommended)"
-    if ui.ask_yes_no(question, default=True):
+    if ui.ask_yes_no(question, default=True, assume_yes=assume_yes):
         return "opusplan"
     return None
 
 
-def _pick_tasks_location() -> str:
+def _pick_tasks_location(assume_yes: bool = False) -> str:
     choice = ui.ask_choice(
         "Where should tasks/subtasks live?",
         ["~/gea/projects/<name> (home)", ".gea/ versioned in the repo (repo)"],
         default_index=0,
+        assume_yes=assume_yes,
     )
     return "home" if choice == 0 else "repo"
 
 
-def _pick_lang() -> tuple[str, str]:
-    commit_choice = ui.ask_choice("Commit language", ["Spanish", "English"], default_index=0)
-    commit_lang = "es" if commit_choice == 0 else "en"
-    same = ui.ask_yes_no("Use the same language for docs?", default=True)
-    docs_lang = commit_lang if same else ("en" if commit_lang == "es" else "es")
-    return commit_lang, docs_lang
+LANGS = ("es", "en")
 
 
-def _pick_autonomy() -> str:
+def _pick_lang(
+    question: str, default: str, forced: str | None = None, assume_yes: bool = False
+) -> str:
+    if forced:
+        return forced
+    choice = ui.ask_choice(
+        question, ["Spanish", "English"], default_index=LANGS.index(default), assume_yes=assume_yes
+    )
+    return LANGS[choice]
+
+
+def _pick_langs(
+    forced: tuple[str | None, str | None, str | None] = (None, None, None),
+    assume_yes: bool = False,
+) -> tuple[str, str, str]:
+    """(agents, docs, commits): one question each, each defaulting to the
+    previous answer so accepting every default gives a single language."""
+    agents = _pick_lang(
+        "Language of the agent instructions (AGENTS.md, CLAUDE.md, .agents/)",
+        "es", forced[0], assume_yes,
+    )
+    docs = _pick_lang(
+        "Language of the documents (docs/, task templates)", agents, forced[1], assume_yes
+    )
+    commits = _pick_lang("Language of commit messages", docs, forced[2], assume_yes)
+    return agents, docs, commits
+
+
+def _pick_autonomy(assume_yes: bool = False) -> str:
     levels = list(config.AUTONOMY_LEVELS)
     choice = ui.ask_choice(
         "Builder autonomy (supervised = asks first, autonomous = never asks)",
         levels,
         default_index=levels.index(config.DEFAULT_AUTONOMY),
+        assume_yes=assume_yes,
     )
     return levels[choice]
 
 
-def run_init(dry_run: bool = False) -> int:
+def run_init(
+    dry_run: bool = False,
+    assume_yes: bool = False,
+    langs: tuple[str | None, str | None, str | None] = (None, None, None),
+) -> int:
     dryrun.enable(dry_run)
     repo_root = Path.cwd()
 
     if not (repo_root / ".git").exists():
-        if ui.ask_yes_no("No git repo here — run `git init`?", default=True):
+        if ui.ask_yes_no("No git repo here — run `git init`?", default=True, assume_yes=assume_yes):
             if dry_run:
                 dryrun.report("run: git init")
             else:
@@ -89,11 +119,11 @@ def run_init(dry_run: bool = False) -> int:
             return 1
 
     project_name = repo_root.name
-    primary = _pick_primary_agent()
-    primary_model = _pick_primary_model(primary)
-    tasks_location = _pick_tasks_location()
-    commit_lang, docs_lang = _pick_lang()
-    autonomy = _pick_autonomy()
+    primary = _pick_primary_agent(assume_yes)
+    primary_model = _pick_primary_model(primary, assume_yes)
+    tasks_location = _pick_tasks_location(assume_yes)
+    agents_lang, docs_lang, commit_lang = _pick_langs(langs, assume_yes)
+    autonomy = _pick_autonomy(assume_yes)
     ponytail = bool(config.load_global().get("optional", {}).get("ponytail", True))
 
     pm = detect.detect_pm(repo_root)
@@ -108,7 +138,7 @@ def run_init(dry_run: bool = False) -> int:
         ui.info("Detected verify commands:")
         for cmd in verify_commands:
             print(f"  {cmd}")
-        if not ui.ask_yes_no("Use these?", default=True):
+        if not ui.ask_yes_no("Use these?", default=True, assume_yes=assume_yes):
             verify_commands = []
 
     all_profiles = load_profiles() or refresh_and_save()
@@ -124,7 +154,7 @@ def run_init(dry_run: bool = False) -> int:
             "verify": verify_commands,
             "builders": {"mode": "ask", "allow": allow, "ponytail": ponytail},
             "autonomy": autonomy,
-            "lang": {"commits": commit_lang, "docs": docs_lang},
+            "lang": {"agents": agents_lang, "commits": commit_lang, "docs": docs_lang},
             "pm": pm,
         }
     )
@@ -135,7 +165,7 @@ def run_init(dry_run: bool = False) -> int:
 
     if scaffold.write_agents_md(
         repo_root,
-        lang=docs_lang,
+        lang=agents_lang,
         project_name=project_name,
         pm=pm,
         commit_lang=commit_lang,
@@ -148,14 +178,14 @@ def run_init(dry_run: bool = False) -> int:
         ui.ok("AGENTS.md written")
 
     if platform.which("claude"):
-        if scaffold.write_claude_md(repo_root, docs_lang, project_name, tasks_root_display):
+        if scaffold.write_claude_md(repo_root, agents_lang, project_name, tasks_root_display):
             ui.ok("CLAUDE.md written")
         if scaffold.merge_claude_settings(repo_root):
             ui.ok(".claude/settings.json written")
 
     written = scaffold.write_agents_dir(
         repo_root,
-        docs_lang,
+        agents_lang,
         project_name,
         commit_lang,
         cfg["builders"]["ponytail"],
@@ -165,7 +195,11 @@ def run_init(dry_run: bool = False) -> int:
     for path in written:
         ui.ok(f"{path} written")
 
-    if ui.ask_yes_no("Set up a docs/ system (INDEX.md, vision, ADR template)?", default=True):
+    if ui.ask_yes_no(
+        "Set up a docs/ system (INDEX.md, vision, ADR template)?",
+        default=True,
+        assume_yes=assume_yes,
+    ):
         written_docs = scaffold.write_docs(repo_root, docs_lang, project_name)
         for path in written_docs:
             ui.ok(f"{path} written")
@@ -176,6 +210,7 @@ def run_init(dry_run: bool = False) -> int:
         "gea.json is gitignored. Commit it as the team's shared policy "
         "(personal choices live in gea.local.json)?",
         default=True,
+        assume_yes=assume_yes,
     ):
         scaffold.stop_ignoring_gea_json(repo_root)
         ui.ok("gea.json is no longer ignored — commit it")
@@ -190,7 +225,7 @@ def run_init(dry_run: bool = False) -> int:
         ui.warn("a pre-commit hook already exists — add `gea scan-secrets` to it yourself")
 
     should_run_codegraph = platform.which("codegraph") and ui.ask_yes_no(
-        "Run `codegraph init` for this project?", default=True
+        "Run `codegraph init` for this project?", default=True, assume_yes=assume_yes
     )
     if should_run_codegraph:
         if dry_run:
