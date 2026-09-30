@@ -25,8 +25,20 @@ def is_wsl() -> bool:
         return False
 
 
+def _mise_shims_dir() -> Path:
+    data_dir = os.environ.get("MISE_DATA_DIR") or str(Path.home() / ".local" / "share" / "mise")
+    return Path(data_dir) / "shims"
+
+
 def which(name: str) -> str | None:
-    return shutil.which(name)
+    """`shutil.which`, falling back to the dirs gea installs tools into (mise
+    shims, ~/.local/bin) so a tool is found even when the calling shell never
+    put them on PATH (no `mise activate`, cron, a herdr pane, ...)."""
+    found = shutil.which(name)
+    if found:
+        return found
+    extra = os.pathsep.join([str(_mise_shims_dir()), str(Path.home() / ".local" / "bin")])
+    return shutil.which(name, path=extra)
 
 
 def has_apt() -> bool:
@@ -47,8 +59,7 @@ def refresh_mise_shims_on_path() -> None:
     setup` would install a tool with mise and then immediately report it
     as still missing.
     """
-    data_dir = os.environ.get("MISE_DATA_DIR") or str(Path.home() / ".local" / "share" / "mise")
-    shims_dir = str(Path(data_dir) / "shims")
+    shims_dir = str(_mise_shims_dir())
     current_path = os.environ.get("PATH", "")
     if shims_dir not in current_path.split(os.pathsep):
         os.environ["PATH"] = shims_dir + os.pathsep + current_path

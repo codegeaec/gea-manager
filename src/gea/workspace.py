@@ -142,14 +142,17 @@ def _ensure_plain_tab(workspace_id: str, repo_root: Path, label: str) -> None:
 
 
 def _ensure_git_tab(workspace_id: str, repo_root: Path) -> None:
-    platform.refresh_mise_shims_on_path()  # gea may run outside a `mise activate` shell
-    if not platform.which("lazygit") or _existing_tab_id(workspace_id, "git"):
+    lazygit = platform.which("lazygit")
+    if not lazygit:
+        ui.warn("lazygit not found — skipping the 'git' tab (run `gea update` to install it)")
+        return
+    if _existing_tab_id(workspace_id, "git"):
         return
     pane_id = _create_tab(workspace_id, repo_root, "git")
     if not pane_id:
         ui.warn("could not create tab 'git'")
         return
-    _result, err = herdr_json(["pane", "run", pane_id, "lazygit"])
+    _result, err = herdr_json(["pane", "run", pane_id, lazygit])
     if err:
         ui.warn(f"tab 'git': could not start lazygit ({err})")
 

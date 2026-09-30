@@ -321,17 +321,15 @@ def test_claude_planner_model_is_set_through_slash_model_not_a_flag(monkeypatch,
 def test_git_tab_runs_lazygit_when_installed(monkeypatch, tmp_path):
     herdr = FakeHerdr()
     monkeypatch.setattr(workspace, "herdr_json", herdr)
-    monkeypatch.setattr(workspace.platform, "refresh_mise_shims_on_path", lambda: None)
     monkeypatch.setattr(workspace.platform, "which", lambda name: "/bin/lazygit")
     workspace._ensure_git_tab("ws-1", tmp_path)
     assert [c[c.index("--label") + 1] for c in herdr.named("tab", "create")] == ["git"]
-    assert any("lazygit" in c for c in herdr.named("pane", "run"))
+    assert [c[-1] for c in herdr.named("pane", "run")] == ["/bin/lazygit"]  # absolute path
 
 
 def test_git_tab_skipped_without_lazygit(monkeypatch, tmp_path):
     herdr = FakeHerdr()
     monkeypatch.setattr(workspace, "herdr_json", herdr)
-    monkeypatch.setattr(workspace.platform, "refresh_mise_shims_on_path", lambda: None)
     monkeypatch.setattr(workspace.platform, "which", lambda name: None)
     workspace._ensure_git_tab("ws-1", tmp_path)
     assert not herdr.named("tab", "create")
