@@ -9,6 +9,7 @@ from pathlib import Path
 
 from gea import shadcn
 from gea.lint_context import MAX_INSTRUCTION_TOKENS, estimate_tokens
+from gea.tasks import importer
 
 # What gea would generate under `.agents/` -> filename keyword that means
 # "the project already has its own equivalent" (e.g. convenciones-commits.md).
@@ -74,6 +75,7 @@ def inspect(repo_root: Path) -> ProjectState:
         if found:
             state.equivalents[name] = found
 
+    state.task_layouts = importer.detect_layouts(repo_root)
     state.shadcn_mcp = [
         hit.location for hit in shadcn.detect_mcp_servers(repo_root) if "project" in hit.location
     ]

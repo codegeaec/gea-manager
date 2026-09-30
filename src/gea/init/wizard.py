@@ -12,7 +12,7 @@ from gea.agents.profiles import load_profiles, refresh_and_save
 from gea.i18n import t
 from gea.init import detect, report, scaffold
 from gea.init import inspect as inspect_mod
-from gea.tasks import store
+from gea.tasks import importer, store
 
 
 def _tasks_root_display(cfg: dict) -> str:
@@ -258,6 +258,10 @@ def run_init(
         else:
             proc.run(["codegraph", "init"], timeout=60)
             ui.ok("codegraph initialized")
+
+    for layout in state.task_layouts:
+        if ui.ask_yes_no(t("init.offer_import"), default=True, assume_yes=assume_yes):
+            importer.import_layout(layout, repo_root)
 
     ui.info(t("init.builders_hint"))
     ui.ok("gea init complete")

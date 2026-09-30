@@ -109,5 +109,13 @@
   "init.report_tasks": "tasks in another format: {layout} — `gea task import` can convert them",
   "init.warn_oversized": "AGENTS.md is ~{tokens} tokens; the pre-commit lint fails above ~2000 — move detail into .agents/",
   "init.warn_shadcn_mcp": "shadcn MCP server in {location}: gea uses the shadcn CLI instead",
-  "init.warn_missing_tools": "missing tools: {tools} — run `gea setup` first"
+  "init.warn_missing_tools": "missing tools: {tools} — run `gea setup` first",
+  "import.unknown_status": "{name}: unknown status '{status}' — left as is",
+  "import.forced_completed": "{name}: was in completed/ with status '{status}' — set to completed",
+  "import.conflict": "{name}: {path} already exists with different content — nothing imported",
+  "import.done": "tasks imported: {imported} new, {unchanged} already there",
+  "import.none": "no tasks in a known layout found (tasks/active|completed, tasks/, docs/tasks)",
+  "import.remove_refused": "--remove-source needs every imported file tracked by git and unmodified — nothing removed",
+  "import.remove_confirm": "git rm the {count} original task file(s)?",
+  "init.offer_import": "Import them into gea's task structure now?"
 }

@@ -44,6 +44,12 @@ def _offer_worktree_removal(task_id: str) -> None:
 
 def dispatch_task(args) -> int:
     command = args.task_command
+    if command == "import":
+        from gea.tasks.importer import run_import
+
+        return run_import(
+            args.path, dry_run=args.dry_run, remove_source=args.remove_source, assume_yes=args.yes
+        )
     if command == "new":
         title, body = args.title, None
         if args.from_issue:

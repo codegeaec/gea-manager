@@ -109,5 +109,13 @@
   "init.report_tasks": "tasks en otro formato: {layout} — `gea task import` puede convertirlas",
   "init.warn_oversized": "AGENTS.md pesa ~{tokens} tokens; el lint del pre-commit falla sobre ~2000 — mové el detalle a .agents/",
   "init.warn_shadcn_mcp": "servidor MCP de shadcn en {location}: gea usa el CLI de shadcn",
-  "init.warn_missing_tools": "faltan herramientas: {tools} — corré `gea setup` primero"
+  "init.warn_missing_tools": "faltan herramientas: {tools} — corré `gea setup` primero",
+  "import.unknown_status": "{name}: estado desconocido '{status}' — se deja tal cual",
+  "import.forced_completed": "{name}: estaba en completed/ con estado '{status}' — pasa a completed",
+  "import.conflict": "{name}: {path} ya existe con otro contenido — no se importó nada",
+  "import.done": "tasks importadas: {imported} nuevas, {unchanged} ya estaban",
+  "import.none": "no hay tasks en un layout conocido (tasks/active|completed, tasks/, docs/tasks)",
+  "import.remove_refused": "--remove-source exige que cada archivo importado esté en git y sin cambios — no se quitó nada",
+  "import.remove_confirm": "¿git rm de los {count} archivo(s) originales de tasks?",
+  "init.offer_import": "¿Importarlas ahora a la estructura de tasks de gea?"
 }

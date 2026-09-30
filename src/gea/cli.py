@@ -51,6 +51,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--type", choices=["bugfix", "feature", "refactor", "spike"], default=None,
         help="use a type-specific task template",
     )
+    task_import = task_sub.add_parser("import", help="import tasks kept in another layout")
+    task_import.add_argument("path", nargs="?", default=None, help="directory holding the tasks")
+    task_import.add_argument("--dry-run", action="store_true", help="report, change nothing")
+    task_import.add_argument("--remove-source", action="store_true", help="git rm the originals")
+    task_import.add_argument("--yes", action="store_true", help="skip the confirmation")
     task_sub.add_parser("list", help="list tasks").add_argument(
         "--status", default=None, required=False
     )
