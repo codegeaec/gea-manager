@@ -13,8 +13,10 @@ Spend your tokens on the plan and the review, not on writing code.
 4. `BLOCKED` means a confirmation dialog: `herdr agent read <pane>
    --source recent-unwrapped --lines 40` (the pane name is in the line
    `gea delegate` printed: `<3 letters of the project>-builder-<id>`), then tell the user what to approve.
-5. Timeout or exhausted quota: `gea agents check <id>`, then pick another
-   agent. A bad run: `gea undo <ID>` restores the checkpoint.
+5. Quota or rate limit hit: gea detects the message, marks the agent's pool
+   unavailable until the reset, closes the pane and prints which agent to try
+   next (`gea delegate <ID> --agent <other>`). On a timeout: `gea agents check
+   <id>`, then pick another agent. A bad run: `gea undo <ID>` restores the checkpoint.
 6. Same findings after two correction rounds → switch agent. After a verified
    run gea closes the builder pane (`builders.close` in gea.json: `on-success`,
    the default, or `never`); failed runs stay open. A correction round then

@@ -181,3 +181,15 @@ or timed-out runs stay open to inspect; a pane the user opened themselves
 ("reused existing pane as …") and the caller's own pane are never closed.
 A correction round after a close starts a fresh session; use `"never"` to keep
 the builder's session across rounds.
+
+# Quota exhaustion
+
+When a builder stops on a message like "Individual quota reached ... Resets in
+70h21m6s", `gea delegate` (and `gea review`) notice it, mark the agent's pool
+exhausted until the reset time (`state.json`, parsed by
+`state.detect_exhaustion`), close the pane and print the next available agent
+to try; the log records `result: exhausted`. The pane's last 20 lines are read
+only when the run looks wrong (a herdr error or timeout, failed verify, or no
+files changed), so a normal run never pays for it and code that merely
+mentions "rate limit" cannot trigger it. Implemented in
+`src/gea/agents/exhaustion.py`.

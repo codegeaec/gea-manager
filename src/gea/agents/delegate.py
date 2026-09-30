@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 from gea import autonomy, checkpoint, config, ui, verify
-from gea.agents import herdr, log, profiles, worktree
+from gea.agents import exhaustion, herdr, log, profiles, worktree
 from gea.i18n import t
 from gea.tasks import budget as budget_mod
 from gea.tasks import scope, store
@@ -155,6 +155,10 @@ def delegate_task(
         task_path=task_path,
         autonomy_line=autonomy.describe(cfg.get("autonomy"), config.agents_lang(cfg)),
     )
+    def out_of_quota() -> bool:
+        retry = f"gea delegate {task_id} --agent {{agent}}"
+        return exhaustion.check_exhausted(pane_name, agent, root, status, retry, tier)
+
     budget = budget_mod.seconds_for(task_path, root)
     out, code, error = herdr.prompt_result(pane_name, prompt, wait=True, budget_s=budget)
     if error == "timeout":
@@ -166,14 +170,19 @@ def delegate_task(
             f"last output:\n\n```\n{tail.strip()}\n```",
         )
         ui.warn(t("delegate.budget", minutes=budget // 60))
-        record("timeout")
+        record("exhausted" if out_of_quota() else "timeout")
         return 1
     if code != 0:
         print("\n".join(out.strip().splitlines()[-5:]))
-        record("blocked" if error == "agent_blocked" else "error")
+        blocked = "blocked" if error == "agent_blocked" else "error"
+        record("exhausted" if out_of_quota() else blocked)
         return 1
     stray = _check_scope(task_id, task_path, wt)
     verify_ok = verify.run_verify(root, task_id, quiet=True, cwd=wt.path if wt else None) == 0
+    # A builder stuck on a quota message returns "done" having changed nothing.
+    if (not verify_ok or not _changed(task_id, wt)) and out_of_quota():
+        record("exhausted", stray, verify_ok)
+        return 1
     if wt:
         worktree.commit_all(wt, f"wip({task_id}): builder output")
     record("done", stray, verify_ok)

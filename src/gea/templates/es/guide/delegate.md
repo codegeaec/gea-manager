@@ -13,7 +13,10 @@ Gastá tus tokens en el plan y la revisión, no en escribir código.
 4. `BLOCKED` es un diálogo de confirmación: `herdr agent read <pane>
    --source recent-unwrapped --lines 40` (el nombre del pane está en la línea
    que imprimió `gea delegate`: `<3 letras del proyecto>-builder-<id>`) y decile al usuario qué aprobar.
-5. Timeout o cupo agotado: `gea agents check <id>` y elegí otro agente. Una
+5. Cupo o rate limit agotado: gea detecta el mensaje, marca el pool del agente
+   como no disponible hasta el reinicio, cierra el pane e imprime a qué agente
+   probar (`gea delegate <ID> --agent <otro>`). Ante un timeout: `gea agents
+   check <id>` y elegí otro agente. Una
    corrida mala: `gea undo <ID>` restaura el checkpoint.
 6. Mismos hallazgos tras dos rondas de corrección → cambiá de agente. Tras una
    corrida verificada gea cierra el pane del builder (`builders.close` en

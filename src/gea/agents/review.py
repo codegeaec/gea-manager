@@ -11,9 +11,10 @@ import time
 from pathlib import Path
 
 from gea import config, review_pack, ui
-from gea.agents import herdr, log, profiles
+from gea.agents import exhaustion, herdr, log, profiles
 from gea.i18n import t
 from gea.tasks import budget, store
+from gea.tasks.sections import section
 
 REVIEW_PROMPT_TEMPLATE = (
     "Review only; do not modify code and do not commit. Read the review pack "
@@ -28,6 +29,10 @@ REVIEW_PROMPT_TEMPLATE = (
 def last_builder_pool(task_id: str) -> str | None:
     builds = [e for e in log.read(task_id=task_id) if e.get("kind", "build") == "build"]
     return builds[-1].get("pool") if builds else None
+
+
+def _review_text(task_path: Path) -> str:
+    return section(task_path.read_text(encoding="utf-8"), "Review")
 
 
 def review_task(task_id: str, agent_id: str | None = None) -> int:
@@ -48,6 +53,7 @@ def review_task(task_id: str, agent_id: str | None = None) -> int:
         return 1
     pack = store.task_root(root) / "review" / f"{task_id}.md"
 
+    review_before = _review_text(task_path)
     started = time.monotonic()
     ui.info(t("review.start", task_id=task_id, agent=reviewer.id, pool=builder_pool))
     status = herdr.start_builder_pane(reviewer.id, reviewer.cli, reviewer.model, root)
@@ -62,6 +68,12 @@ def review_task(task_id: str, agent_id: str | None = None) -> int:
             budget_s=budget.seconds_for(task_path, root),
         )
         result = "done" if code == 0 else ("timeout" if error == "timeout" else "error")
+        reviewer_pane = herdr.pane_name_for(root, "builder", reviewer.id)
+        untouched = _review_text(task_path) == review_before
+        if (result != "done" or untouched) and exhaustion.check_exhausted(
+            reviewer_pane, reviewer, root, status, f"gea review {task_id} --agent {{agent}}"
+        ):
+            result = "exhausted"
     log.append(
         {
             "kind": "review",

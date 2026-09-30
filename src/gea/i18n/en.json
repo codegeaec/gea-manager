@@ -118,5 +118,9 @@
   "import.remove_refused": "--remove-source needs every imported file tracked by git and unmodified — nothing removed",
   "import.remove_confirm": "git rm the {count} original task file(s)?",
   "init.offer_import": "Import them into gea's task structure now?",
-  "delegate.closed": "{pane}: pane closed (builders.close = \"on-success\"; set \"never\" in gea.json to keep it)"
+  "delegate.closed": "{pane}: pane closed (builders.close = \"on-success\"; set \"never\" in gea.json to keep it)",
+  "exhausted.agent": "{agent} is out of quota (pool {pool}) until {until} — marked unavailable",
+  "exhausted.closed": "{pane}: pane closed",
+  "exhausted.next": "try {agent}: {cmd}",
+  "exhausted.none": "no other agent is available — implement it yourself or wait for the reset"
 }

@@ -118,5 +118,9 @@
   "import.remove_refused": "--remove-source exige que cada archivo importado esté en git y sin cambios — no se quitó nada",
   "import.remove_confirm": "¿git rm de los {count} archivo(s) originales de tasks?",
   "init.offer_import": "¿Importarlas ahora a la estructura de tasks de gea?",
-  "delegate.closed": "{pane}: pane cerrado (builders.close = \"on-success\"; pon \"never\" en gea.json para conservarlo)"
+  "delegate.closed": "{pane}: pane cerrado (builders.close = \"on-success\"; pon \"never\" en gea.json para conservarlo)",
+  "exhausted.agent": "{agent} se quedó sin cupo (pool {pool}) hasta {until} — marcado como no disponible",
+  "exhausted.closed": "{pane}: pane cerrado",
+  "exhausted.next": "prueba con {agent}: {cmd}",
+  "exhausted.none": "no hay otro agente disponible — implementalo vos o esperá al reinicio del cupo"
 }

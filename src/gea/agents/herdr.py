@@ -187,6 +187,8 @@ def missing_integrations(clis: set[str]) -> list[str]:
 
 
 def read_pane(pane_name: str, lines: int = 40) -> str:
+    if os.environ.get("HERDR_ENV") != "1":
+        return ""  # no herdr session, no pane to read
     cmd = [
         "herdr", "agent", "read", pane_name,
         "--source", "recent-unwrapped", "--lines", str(lines),
