@@ -77,3 +77,28 @@ def test_codex_daemon_failure_is_retried_with_no_daemon(monkeypatch, tmp_path):
     assert status.startswith("started")
     starts = [c for c in calls if c[:2] == ["agent", "start"]]
     assert len(starts) == 2 and "--no-daemon" in starts[1] and "--no-daemon" not in starts[0]
+
+
+def test_wait_settled_keeps_waiting_while_the_agent_is_working(monkeypatch):
+    monkeypatch.setenv("HERDR_ENV", "1")
+    monkeypatch.setattr(herdr.time, "sleep", lambda s: None)
+    statuses = iter(["working", "idle", "idle", "working", "idle", "idle", "idle"])
+    reads = []
+
+    def fake(cmd, timeout=15):
+        status = next(statuses)
+        reads.append(status)
+        return {"agent": {"agent": "opencode", "agent_status": status}}, None
+
+    monkeypatch.setattr(herdr, "herdr_json", fake)
+    assert herdr.wait_settled("x", 60, stable_reads=3) == "settled"
+    assert len(reads) == 7  # the dip to idle mid-run did not count as finished
+
+
+def test_wait_settled_times_out_when_still_working(monkeypatch):
+    monkeypatch.setenv("HERDR_ENV", "1")
+    monkeypatch.setattr(herdr.time, "sleep", lambda s: None)
+    monkeypatch.setattr(
+        herdr, "herdr_json", lambda cmd, timeout=15: ({"agent": {"agent_status": "working"}}, None)
+    )
+    assert herdr.wait_settled("x", 0) == "timeout"

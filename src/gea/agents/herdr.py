@@ -310,6 +310,36 @@ def prompt_result(
     return out, code, error
 
 
+SETTLE_STABLE_READS = 5  # consecutive one-second reads of a non-working status
+
+
+def wait_settled(pane_name: str, budget_s: int, stable_reads: int = SETTLE_STABLE_READS) -> str:
+    """After `agent prompt --wait` returned, confirm the agent is really done:
+    some CLIs (opencode) look idle between steps, so `--wait` can return while
+    the run goes on. Polls until `stable_reads` consecutive reads show neither
+    `working` nor `unknown`. Returns "settled", "blocked" (waiting on a dialog)
+    or "timeout" (still working when `budget_s` ran out). An agent herdr cannot
+    report on counts as settled, so this never hangs."""
+    if os.environ.get("HERDR_ENV") != "1":
+        return "settled"
+    deadline = time.monotonic() + budget_s
+    stable = 0
+    while stable < stable_reads:
+        info, err = herdr_json(["agent", "get", pane_name])
+        agent = info.get("agent") or {}
+        if err or not agent:
+            return "settled"
+        status = agent.get("agent_status")
+        if status == "blocked":
+            return "blocked"
+        stable = 0 if status in ("working", "unknown") else stable + 1
+        if stable < stable_reads:
+            if time.monotonic() >= deadline:
+                return "timeout"
+            time.sleep(1)
+    return "settled"
+
+
 def notify(title: str, body: str = "", sound: str = "done") -> bool:
     """Show a herdr notification (best effort — never raises or blocks)."""
     cmd = ["herdr", "notification", "show", title, "--sound", sound]

@@ -176,7 +176,13 @@ def delegate_task(
         return exhaustion.check_exhausted(pane_name, agent, root, status, retry, tier)
 
     budget = budget_mod.seconds_for(task_path, root)
+    prompted = time.monotonic()
     out, code, error = herdr.prompt_result(pane_name, prompt, wait=True, budget_s=budget)
+    if code == 0:  # `--wait` can return early between an agent's steps: confirm it is done
+        left = max(budget - round(time.monotonic() - prompted), 0)
+        settled = herdr.wait_settled(pane_name, left)
+        if settled != "settled":
+            code, error = 1, "timeout" if settled == "timeout" else "agent_blocked"
     if error == "timeout":
         tail = herdr.read_pane(pane_name)
         store.append_to_section(
@@ -194,6 +200,16 @@ def delegate_task(
         record("exhausted" if out_of_quota() else blocked)
         return 1
     stray = _check_scope(task_id, task_path, wt)
+    if not _changed(task_id, wt):
+        if out_of_quota():  # a builder stuck on a quota message also "finishes" empty
+            record("exhausted", stray, None)
+            return 1
+        # Nothing changed: verify would "pass" vacuously, so it is not run and the
+        # pane stays open for a look.
+        record("no-changes", stray, None)
+        ui.warn(t("delegate.no_changes", task_id=task_id, agent=agent.id))
+        print(t("delegate.task_line", path=task_path))
+        return 0
     verify_ok = (
         verify.run_verify(
             root, task_id, quiet=True, cwd=wt.path if wt else None, progress=False
@@ -201,7 +217,7 @@ def delegate_task(
         == 0
     )
     # A builder stuck on a quota message returns "done" having changed nothing.
-    if (not verify_ok or not _changed(task_id, wt)) and out_of_quota():
+    if not verify_ok and out_of_quota():
         record("exhausted", stray, verify_ok)
         return 1
     if wt:
