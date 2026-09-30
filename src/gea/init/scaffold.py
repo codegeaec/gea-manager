@@ -13,6 +13,7 @@ from pathlib import Path
 
 from gea import autonomy as autonomy_mod
 from gea import dryrun
+from gea.init import inspect as inspect_mod
 
 TEMPLATES_ROOT = Path(__file__).resolve().parent.parent / "templates"
 
@@ -109,12 +110,13 @@ def write_agents_dir(
     commits = _read_template(lang, "agents/commit-conventions.md").format(
         commit_lang=LANG_NAMES.get(commit_lang, commit_lang)
     )
-    if _write_if_missing(agents_dir / "commit-conventions.md", commits):
-        written.append(".agents/commit-conventions.md")
-
     gotchas = _read_template(lang, "agents/gotchas.md").format(project_name=project_name)
-    if _write_if_missing(agents_dir / "gotchas.md", gotchas):
-        written.append(".agents/gotchas.md")
+    for name, content in (("commit-conventions.md", commits), ("gotchas.md", gotchas)):
+        # A project's own equivalent (e.g. convenciones-commits.md) wins: no duplicate.
+        if not inspect_mod.find_equivalent(agents_dir, name) and _write_if_missing(
+            agents_dir / name, content
+        ):
+            written.append(f".agents/{name}")
 
     orchestrator = _read_template(lang, "agents/orchestrator.md")
     if _write_if_missing(agents_dir / "orchestrator.md", orchestrator):

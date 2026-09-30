@@ -99,5 +99,14 @@
   "task.issue_failed": "no se pudo leer el issue #{number}: {error}",
   "pr.confirm": "¿Crear este pull request en GitHub?",
   "pr.failed": "falló `gh pr create`",
-  "init.builders_hint": "Los builders se prueban de más barato a más caro (orden de prioridad). Marcá las tasks delicadas con `Tier: L`, o fijá agentes por tier con builders.tiers en gea.json."
+  "init.builders_hint": "Los builders se prueban de más barato a más caro (orden de prioridad). Marcá las tasks delicadas con `Tier: L`, o fijá agentes por tier con builders.tiers en gea.json.",
+  "init.report_new": "proyecto nuevo — gea creará la estructura completa",
+  "init.report_existing": "proyecto existente — gea añade alrededor de tus archivos, nunca encima",
+  "init.report_agents_md": "AGENTS.md encontrado (~{tokens} tokens): se conserva, gea añade su propio bloque",
+  "init.report_claude_md": "CLAUDE.md encontrado: se conserva, gea añade su propio bloque",
+  "init.report_agents_dir": ".agents/ encontrado ({count} archivo(s)): solo se crean los que faltan",
+  "init.report_equivalent": "no se crea {generated}: {existing} ya lo cubre",
+  "init.report_tasks": "tasks en otro formato: {layout} — `gea task import` puede convertirlas",
+  "init.warn_oversized": "AGENTS.md pesa ~{tokens} tokens; el lint del pre-commit falla sobre ~2000 — mové el detalle a .agents/",
+  "init.warn_shadcn_mcp": "servidor MCP de shadcn en {location}: gea usa el CLI de shadcn"
 }

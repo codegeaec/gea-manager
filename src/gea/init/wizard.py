@@ -10,7 +10,8 @@ from pathlib import Path
 from gea import config, dryrun, platform, proc, secrets, ui
 from gea.agents.profiles import load_profiles, refresh_and_save
 from gea.i18n import t
-from gea.init import detect, scaffold
+from gea.init import detect, report, scaffold
+from gea.init import inspect as inspect_mod
 from gea.tasks import store
 
 
@@ -117,6 +118,9 @@ def run_init(
         else:
             ui.err("gea init needs a git repository")
             return 1
+
+    state = inspect_mod.inspect(repo_root)
+    report.print_report(state)
 
     project_name = repo_root.name
     primary = _pick_primary_agent(assume_yes)

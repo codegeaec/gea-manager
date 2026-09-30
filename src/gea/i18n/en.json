@@ -99,5 +99,14 @@
   "task.issue_failed": "could not read issue #{number}: {error}",
   "pr.confirm": "Create this pull request on GitHub?",
   "pr.failed": "`gh pr create` failed",
-  "init.builders_hint": "Builders are tried cheapest-first (priority order). Mark delicate tasks `Tier: L`, or pin agents per tier with builders.tiers in gea.json."
+  "init.builders_hint": "Builders are tried cheapest-first (priority order). Mark delicate tasks `Tier: L`, or pin agents per tier with builders.tiers in gea.json.",
+  "init.report_new": "new project — gea will create the full structure",
+  "init.report_existing": "existing project — gea adds around your files, never over them",
+  "init.report_agents_md": "AGENTS.md found (~{tokens} tokens): kept as is, gea adds its own block",
+  "init.report_claude_md": "CLAUDE.md found: kept as is, gea adds its own block",
+  "init.report_agents_dir": ".agents/ found ({count} file(s)): only missing files are created",
+  "init.report_equivalent": "{generated} not created: {existing} already covers it",
+  "init.report_tasks": "tasks in another format: {layout} — `gea task import` can convert them",
+  "init.warn_oversized": "AGENTS.md is ~{tokens} tokens; the pre-commit lint fails above ~2000 — move detail into .agents/",
+  "init.warn_shadcn_mcp": "shadcn MCP server in {location}: gea uses the shadcn CLI instead"
 }
