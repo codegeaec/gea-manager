@@ -182,6 +182,15 @@ or timed-out runs stay open to inspect; a pane the user opened themselves
 A correction round after a close starts a fresh session; use `"never"` to keep
 the builder's session across rounds.
 
+# Builder permissions and worktree setup
+
+`builders.permissions` (`safe` | `yolo`) picks the unattended-mode flags a
+builder is started with (`herdr.PERMISSION_ARGS`, verified against each CLI's
+`--help`; kimi has none). `yolo` is refused unless the run is in a worktree, and
+reviews / `gea agents start` always use `safe`. `builders.worktree` =
+`{"copy": [...], "setup": "cmd"}` seeds a fresh worktree (`.env`, `pnpm
+install`); a failing setup removes the worktree. See the README.
+
 # Quota exhaustion
 
 When a builder stops on a message like "Individual quota reached ... Resets in

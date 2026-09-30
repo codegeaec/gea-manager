@@ -112,6 +112,47 @@ reemplaza a la compartida.
 Si ya tienes un workspace abierto, gea no cierra ni renombra tabs que no creó:
 los tabs nuevos se añaden a los existentes.
 
+## Permisos de los builders (`builders.permissions`)
+
+Un builder que se detiene a pedir permiso deja la delegación en `BLOCKED`:
+herdr no permite responder esos diálogos por script. `builders.permissions`
+en `gea.json` decide con qué flags se abre cada builder (nunca la pestaña del
+orquestador):
+
+| Valor | Qué hace | Flags por CLI |
+|---|---|---|
+| `safe` (por defecto) | Lo más desatendido que cada CLI permite sin perder límites | claude `--permission-mode acceptEdits` · codex `--sandbox workspace-write --ask-for-approval never` · opencode ninguno (rigen las reglas de `opencode.jsonc`) · agy `--mode accept-edits` |
+| `yolo` | Sin ninguna verificación de permisos | claude `--dangerously-skip-permissions` · codex `--dangerously-bypass-approvals-and-sandbox` · opencode `--auto` · agy `--dangerously-skip-permissions` |
+
+kimi no recibe flags (no están verificados). **`yolo` solo se permite dentro de
+un worktree**: sin `--worktree` (o `builders.worktrees: true`), `gea delegate`
+se niega antes de abrir nada. `gea review` y `gea agents start` nunca usan
+`yolo`. Aun así un builder en `yolo` puede ejecutar cualquier comando, incluida
+la red o `git push`: el worktree protege tu árbol de trabajo, no tu cuenta.
+
+### Worktrees con dependencias (`builders.worktree`)
+
+Un worktree nuevo no trae `node_modules` ni archivos ignorados como `.env`.
+Se preparan así:
+
+```json
+{
+  "builders": {
+    "permissions": "yolo",
+    "worktrees": true,
+    "worktree": {
+      "copy": [".env"],
+      "setup": "pnpm install --frozen-lockfile && pnpm prisma:generate"
+    }
+  }
+}
+```
+
+- `copy`: archivos (rutas relativas al repo) que se copian al worktree si existen.
+  Nunca se incluyen en el commit del builder ni en la lista de archivos tocados.
+- `setup`: comando que se ejecuta en el worktree al crearlo (máx. 15 min). Si
+  falla, el worktree se elimina y la delegación se cancela con el error.
+
 ## Desarrollo
 
 ```bash
