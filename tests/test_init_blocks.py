@@ -71,3 +71,18 @@ def test_full_init_on_an_existing_project_keeps_user_content_and_is_idempotent(r
     wizard.run_init(assume_yes=True, langs=("es", "es", "es"))
     again = {p: p.read_text() for p in repo.rglob("*") if p.is_file() and ".git/" not in str(p)}
     assert again == snapshot
+
+
+def test_an_existing_docs_folder_is_left_alone(repo):
+    (repo / "docs").mkdir()
+    (repo / "docs" / "mine.md").write_text("mío")
+    wizard.run_init(assume_yes=True, langs=("es", "es", "es"))
+    assert sorted(p.name for p in (repo / "docs").rglob("*") if p.is_file()) == ["mine.md"]
+
+
+def test_init_writes_cheat_sheet_readme_and_commands_for_installed_clis(repo):
+    wizard.run_init(assume_yes=True, langs=("en", "en", "en"))
+    assert (repo / ".agents" / "gea.md").exists()
+    assert "Working with gea" in (repo / "README.md").read_text()
+    assert (repo / ".claude" / "commands" / "gea-plan.md").exists()  # claude is the mocked CLI
+    assert not (repo / ".opencode").exists()

@@ -24,7 +24,7 @@ irm https://raw.githubusercontent.com/codegeaec/gea-manager/main/install.ps1 | i
 ```bash
 gea setup      # wizard: instala y configura todo lo necesario en esta máquina
 gea doctor     # herramientas, sesión de cada agente y tamaño del contexto (no instala)
-gea init       # deja un proyecto listo para trabajar con gea
+gea init       # deja un proyecto (nuevo o ya empezado) listo para trabajar con gea
 gea            # abre el workspace de herdr preconfigurado
 gea --help
 ```
@@ -40,6 +40,8 @@ gea verify --task TASK-001            # verify del proyecto + criterios de acept
 gea delegate TASK-001                 # toma un checkpoint de git y delega al builder
 gea undo TASK-001                     # vuelve al checkpoint previo a delegar
 gea task done TASK-001                # cierra; su ## Decisions pasa a docs/decisions.md
+gea task import                       # convierte tasks de otro formato a la estructura gea
+gea guide plan                        # guía paso a paso para cualquier agente (sin skills)
 gea delegate TASK-001 --worktree      # el builder trabaja en su propio git worktree
 gea review-pack TASK-001              # task + diff + verify en un solo archivo
 gea review TASK-001                   # revisa un modelo distinto al que implementó

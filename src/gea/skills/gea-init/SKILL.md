@@ -16,8 +16,11 @@ project's glossary.
 ## Steps
 
 1. If `gea.json` doesn't exist yet, run `gea init` and answer its prompts
-   together with the user (primary agent, tasks location, commit/docs
-   language, verify commands, docs system).
+   together with the user (primary agent, tasks location, the language of
+   agents / docs / commits, verify commands, builder agents). On a project
+   that already has AGENTS.md, CLAUDE.md, `.agents/` or tasks, read the
+   inspection report it prints first: existing files are kept and only get a
+   gea block; offer `gea task import` for tasks in another layout.
 2. If `gea init` wrote `docs/00-vision-product(o).md`, don't leave it as
    the placeholder text. Ask the user:
    - What does this product do, in one paragraph?

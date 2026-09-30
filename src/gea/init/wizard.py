@@ -232,7 +232,7 @@ def run_init(
     if readme != "unchanged":
         ui.ok(f"README.md {readme}")
 
-    if ui.ask_yes_no(
+    if not state.has_docs and ui.ask_yes_no(
         "Set up a docs/ system (INDEX.md, vision, ADR template)?",
         default=True,
         assume_yes=assume_yes,

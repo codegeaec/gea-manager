@@ -154,3 +154,13 @@ self-sufficient tasks (`## Files` + `## Acceptance`, filled with codegraph).
 
 `gea status`, `gea task new --from-issue N` (uses `gh issue view`),
 `gea pr <ID>` (generated body, confirmation first, no tool signature).
+
+# Init and adoption pass
+
+`gea init` (see `docs/init.md`): three separate language questions
+(agents/docs/commits, `lang.agents` falls back to `lang.docs`), read-only
+inspection and report, managed blocks in existing AGENTS.md/CLAUDE.md/README,
+no duplicate `.agents` files, builder selection, `gea task import`.
+`gea guide [plan|delegate|review|build|all] [--lang]` prints the working guide;
+`.agents/gea.md` is the command cheat sheet; `/gea-*` slash commands for
+Claude Code and OpenCode. `gea agents refresh` detects builder profiles.
