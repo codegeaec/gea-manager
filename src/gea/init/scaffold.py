@@ -198,7 +198,8 @@ def merge_claude_settings(repo_root: Path) -> bool:
 
 def update_gitignore(repo_root: Path, tasks_location: str) -> bool:
     path = repo_root / ".gitignore"
-    entries = ["gea.local.json", ".codegraph/"]
+    # .gea/review/ holds the generated `gea review-pack` bundles: never versioned.
+    entries = ["gea.local.json", ".codegraph/", ".gea/review/"]
     if tasks_location == "home":
         entries.append(".gea")
     existing = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
