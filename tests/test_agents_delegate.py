@@ -136,7 +136,8 @@ def test_reused_pane_gets_a_fresh_session_only_for_a_different_task(tmp_path, mo
     log.append({"kind": "build", "task_id": "TASK-000", "agent_id": "codex"})
     reuse = "pane builder-codex already exists, reusing it"
     _delegate_with_fakes(tmp_path, monkeypatch, reuse, ("", 0, None))
-    assert cleared == [("builder-codex", "codex")]
+    name = delegate.herdr.pane_name_for(tmp_path / "repo", "builder", "codex")
+    assert name == "rep-builder-codex" and cleared == [(name, "codex")]
 
     cleared.clear()  # a correction round of the same task keeps the session
     monkeypatch.setattr(delegate.herdr, "start_agent_pane", lambda *a: "reused existing pane")

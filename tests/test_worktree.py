@@ -56,7 +56,7 @@ def test_create_uses_a_deterministic_path_and_copies_config(repo, fake_herdr):
     assert wt.branch == "gea/task-001" and wt.workspace_id == "w9"
     assert wt.path == paths.gea_home() / "worktrees" / repo.name / "task-001"
     assert (wt.path / "gea.json").exists()  # untracked config travels along
-    assert wt.pane_name == "wt-001"
+    assert wt.slug == "001"
 
 
 def test_create_failure_leaves_nothing_behind(repo, monkeypatch):
@@ -99,7 +99,8 @@ def _delegate(repo, monkeypatch, start_status="started"):
 def test_delegate_in_a_worktree_logs_it_and_skips_the_checkpoint(repo, fake_herdr, monkeypatch):
     started = _delegate(repo, monkeypatch)
     assert delegate.delegate_task("TASK-001", use_worktree=True) == 0
-    assert started[0][0] == "wt-001" and started[0][3] == worktree.lookup("TASK-001").path
+    name = delegate.herdr.pane_name_for(repo, "wt", "001")
+    assert started[0][0] == name and started[0][3] == worktree.lookup("TASK-001").path
     entry = log.last_for_task("TASK-001")
     assert entry["branch"] == "gea/task-001" and entry["worktree"]
     assert subprocess.run(

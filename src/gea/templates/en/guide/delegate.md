@@ -10,8 +10,9 @@ Spend your tokens on the plan and the review, not on writing code.
    (or a git worktree), blocks until the builder settles and prints a short
    summary: files changed, files outside scope, verify result. Do not edit the
    repo meanwhile and do not read the builder's terminal.
-4. `BLOCKED` means a confirmation dialog: `herdr agent read builder-<id>
-   --source recent-unwrapped --lines 40`, then tell the user what to approve.
+4. `BLOCKED` means a confirmation dialog: `herdr agent read <pane>
+   --source recent-unwrapped --lines 40` (the pane name is in the line
+   `gea delegate` printed: `<3 letters of the project>-builder-<id>`), then tell the user what to approve.
 5. Timeout or exhausted quota: `gea agents check <id>`, then pick another
    agent. A bad run: `gea undo <ID>` restores the checkpoint.
 6. Same findings after two correction rounds → switch agent.

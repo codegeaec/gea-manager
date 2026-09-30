@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 from pathlib import Path
 from typing import Any
@@ -54,10 +55,51 @@ def herdr_json(cmd: list[str], timeout: int = 15) -> tuple[dict[str, Any], str |
     return {}, (parsed.get("error", {}) or {}).get("code", "unknown_error")
 
 
+def safe_label(name: str) -> str:
+    """Lowercase slug of a folder/project name (`[a-z0-9_-]`, never empty)."""
+    slug = re.sub(r"[^a-z0-9_-]+", "-", name.lower()).strip("-")
+    return slug or "repo"
+
+
+def project_prefix(repo_root: Path) -> str:
+    """First 3 letters/digits of the project folder, e.g. `cotizaciones` -> `cot`.
+    Always starts with a letter, as herdr agent names require."""
+    prefix = re.sub(r"[^a-z0-9]", "", safe_label(repo_root.name))[:3]
+    if not prefix or prefix[0].isdigit():
+        prefix = ("p" + prefix)[:3]
+    return prefix
+
+
+def agent_name(prefix: str, *parts: str) -> str:
+    """`cot-claude`, `cot-builder-oc-kimi`: herdr allows `[a-z][a-z0-9_-]{0,31}`."""
+    return "-".join([prefix, *parts])[:32].rstrip("-_")
+
+
+def free_agent_name(base: str, workspace_id: str | None) -> str:
+    """`base`, or `base-2`, `base-3`... when a live agent of *another* workspace
+    already has it (herdr agent names are unique among all live agents). An
+    agent in our own workspace counts as ours, so its pane is reused."""
+    if os.environ.get("HERDR_ENV") != "1":
+        return base
+    for n in range(1, 10):
+        name = base if n == 1 else f"{base[:30]}-{n}"
+        info, _err = herdr_json(["agent", "get", name])
+        found = info.get("agent") or {}
+        if not found or found.get("workspace_id") == workspace_id:
+            return name
+    return base
+
+
+def pane_name_for(repo_root: Path, *parts: str) -> str:
+    """The name gea gives a pane/agent of this project: `<prefix>-<parts...>`."""
+    base = agent_name(project_prefix(repo_root), *parts)
+    return free_agent_name(base, os.environ.get("HERDR_WORKSPACE_ID"))
+
+
 def start_builder_pane(agent_id: str, cli: str, model: str | None, cwd: Path) -> str:
-    """Start (or reuse) the `builder-<agent_id>` pane. Returns a short
-    human-readable status line, same convention as `gea agents start`."""
-    return start_agent_pane(f"builder-{agent_id}", cli, model, cwd)
+    """Start (or reuse) this project's `<prefix>-builder-<agent_id>` pane. Returns
+    a short human-readable status line, same convention as `gea agents start`."""
+    return start_agent_pane(pane_name_for(cwd, "builder", agent_id), cli, model, cwd)
 
 
 def start_agent_pane(pane_name: str, cli: str, model: str | None, cwd: Path) -> str:

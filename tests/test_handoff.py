@@ -58,7 +58,9 @@ def test_handoff_to_starts_the_pane_and_switches_primary(repo, monkeypatch):
     monkeypatch.setattr(handoff.herdr, "start_agent_pane", lambda *a: calls.append(a) or "started")
     monkeypatch.setattr(handoff.herdr, "prompt_pane", lambda *a, **k: calls.append(a) or ("", 0))
     assert handoff.run_handoff(to="codex", assume_yes=True) == 0
-    assert calls[0][0] == "orchestrator-codex" and "HANDOFF.md" in calls[1][1]
+    name = handoff.herdr.pane_name_for(repo, "orchestrator", "codex")
+    assert calls[0][0] == name and name.endswith("-orchestrator-codex")
+    assert calls[1][0] == name and "HANDOFF.md" in calls[1][1]
     assert config.load_project(repo)["primary"] == "codex"
     assert log.read(kind="handoff")
 

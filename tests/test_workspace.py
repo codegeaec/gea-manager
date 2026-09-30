@@ -118,7 +118,7 @@ def test_open_or_focus_sets_model_on_first_claude_tab(monkeypatch, tmp_path):
         workspace, "prompt_pane", lambda pane, msg, wait=True: prompts.append((pane, msg, wait))
     )
     workspace.open_or_focus()
-    expected = workspace._agent_name("claude", workspace._safe_label(tmp_path.name))
+    expected = workspace.agent_name(workspace.project_prefix(tmp_path), "claude")
     assert prompts == [(expected, "/model opusplan", False)]
 
 
@@ -277,16 +277,6 @@ def test_extra_tab_without_command_is_just_a_shell_and_missing_cwd_is_skipped(
     assert not herdr.named("pane", "run")
     assert [c[c.index("--label") + 1] for c in herdr.named("tab", "create")] == ["web"]
     assert "missing" in capsys.readouterr().out
-
-
-def test_agent_names_are_unique_per_project_and_valid_for_herdr():
-    import re
-
-    name = workspace._agent_name("claude", "cotizaciones")
-    assert name == "claude-cotizaciones" != workspace._agent_name("claude", "gea-manager")
-    long = workspace._agent_name("opencode", "a-very-long-project-name-that-keeps-going-on")
-    assert len(long) <= 32 and re.fullmatch(r"[a-z][a-z0-9_-]{0,31}", long)
-    assert not long.endswith(("-", "_"))
 
 
 def test_the_agent_is_started_under_the_project_specific_name(monkeypatch, tmp_path):

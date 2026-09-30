@@ -27,6 +27,7 @@ def test_start_builder_pane_reuses_existing(monkeypatch, tmp_path):
     monkeypatch.setenv("HERDR_ENV", "1")
     monkeypatch.setenv("HERDR_PANE_ID", "pane-1")
     monkeypatch.setenv("HERDR_WORKSPACE_ID", "ws-1")
-    monkeypatch.setattr(herdr, "herdr_json", lambda cmd, timeout=15: ({"agent": "codex"}, None))
+    ours = {"agent": {"workspace_id": "ws-1"}}
+    monkeypatch.setattr(herdr, "herdr_json", lambda cmd, timeout=15: (ours, None))
     status = herdr.start_builder_pane("codex", "codex", None, tmp_path)
     assert "already exists" in status

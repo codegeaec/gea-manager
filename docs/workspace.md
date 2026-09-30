@@ -17,9 +17,16 @@ opencode-roles logic, which doesn't belong in a general-purpose tool.
      repo, optional `command`): `tab create --cwd <repo>/<cwd>`, then
      `pane run <pane> <command>` only when the tab was created by this call.
      A missing `cwd` skips that tab with a warning.
-- The agent is started under the name `<cli>-<repo>` (e.g.
-  `claude-cotizaciones`), because herdr agent names are unique among live
-  agents; the tab keeps the short label `claude`.
+- **Pane/agent names** (`herdr.pane_name_for`): herdr agent names are unique
+  among *all* live agents, so a bare `claude` in a second project collides
+  with the first one (`agent_name_taken`). gea names every agent
+  `<prefix>-<role>`, where `<prefix>` is the first 3 letters/digits of the
+  project folder (`cotizaciones` → `cot`): `cot-claude`, `cot-builder-oc-kimi`,
+  `cot-wt-001`, `cot-orchestrator-codex`. If another workspace already holds
+  the name (two projects sharing a prefix, e.g. `cotizaciones`/`cotizador`),
+  `-2`, `-3`... is appended; an agent in *our own* workspace keeps its name so
+  the pane is reused. Tab labels stay short (`claude`). Panes created by older
+  gea versions (`claude`, `builder-<id>`) are not renamed.
 - `tabs` is validated when the config loads (`config._validate_tabs`):
   unique non-reserved labels, `cwd` relative and inside the repo, `command` a
   string. A `tabs` list in `gea.local.json` replaces the shared one.

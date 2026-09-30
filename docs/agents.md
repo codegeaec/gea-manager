@@ -13,7 +13,7 @@ instead of per-repo:
   subset of profile ids; `["builders"]["mode"]` is `ask`/`auto`.
 
 `gea agents available` prints the mode and every non-exhausted, allowed
-profile. `gea agents start <id>` reuses an existing `builder-<id>` herdr
+profile. `gea agents start <id>` reuses an existing `<prefix>-builder-<id>` herdr
 pane or splits a sibling pane in the current tab (same heuristic as the
 Cotizaciones skill: wide pane splits right, narrow/tall splits down).
 `gea agents check <id>` reads the pane and marks its whole pool exhausted

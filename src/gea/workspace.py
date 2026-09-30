@@ -14,12 +14,20 @@ Tabs, idempotent by label (ported from the old herdr-setup gist's
 from __future__ import annotations
 
 import os
-import re
 from dataclasses import dataclass
 from pathlib import Path
 
 from gea import config, proc, ui
-from gea.agents.herdr import CLI_ARGS, DEFAULT_CLI_ARGS, herdr_json, prompt_pane
+from gea.agents.herdr import (
+    CLI_ARGS,
+    DEFAULT_CLI_ARGS,
+    agent_name,
+    free_agent_name,
+    herdr_json,
+    project_prefix,
+    prompt_pane,
+)
+from gea.agents.herdr import safe_label as _safe_label
 
 
 def _find_repo_root(start: Path | None = None) -> Path:
@@ -28,11 +36,6 @@ def _find_repo_root(start: Path | None = None) -> Path:
     if code == 0 and out.strip():
         return Path(out.strip())
     return start
-
-
-def _safe_label(name: str) -> str:
-    slug = re.sub(r"[^a-z0-9_-]+", "-", name.lower()).strip("-")
-    return slug or "repo"
 
 
 @dataclass
@@ -83,12 +86,6 @@ def _create_tab(workspace_id: str, repo_root: Path, label: str) -> str | None:
     if err:
         return None
     return result.get("root_pane", {}).get("pane_id")
-
-
-def _agent_name(cli: str, repo_label: str) -> str:
-    """herdr agent names are unique among live agents, so a bare `claude` in a
-    second project would collide with the first one's. Tab labels stay short."""
-    return f"{cli}-{repo_label}"[:32].rstrip("-_")
 
 
 def _adopt_initial_tab(initial: tuple[str, str], label: str) -> str | None:
@@ -177,8 +174,8 @@ def open_or_focus() -> int:
         else None
     )
 
-    agent_name = _agent_name(primary, label)
-    created = _ensure_agent_tab(workspace_id, repo_root, primary, primary, initial, agent_name)
+    name = free_agent_name(agent_name(project_prefix(repo_root), primary), workspace_id)
+    created = _ensure_agent_tab(workspace_id, repo_root, primary, primary, initial, name)
     _ensure_plain_tab(workspace_id, repo_root, "terminal")
     _ensure_extra_tabs(workspace_id, repo_root, cfg.get("tabs", []))
 
@@ -186,7 +183,7 @@ def open_or_focus() -> int:
         model = cfg.get("primaryModel")
         if model:
             ui.ok(f"setting /model {model} in the claude tab")
-            prompt_pane(agent_name, f"/model {model}", wait=False)
+            prompt_pane(name, f"/model {model}", wait=False)
 
     if os.environ.get("HERDR_ENV") == "1":
         herdr_json(["workspace", "focus", workspace_id])

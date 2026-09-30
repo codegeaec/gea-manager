@@ -56,7 +56,7 @@ def review_task(task_id: str, agent_id: str | None = None) -> int:
     if not (status.startswith("BLOCKED") or "FAILED" in status or "!=" in status):
         prompt = REVIEW_PROMPT_TEMPLATE.format(pack=pack, task=task_path)
         _out, code, error = herdr.prompt_result(
-            f"builder-{reviewer.id}",
+            herdr.pane_name_for(root, "builder", reviewer.id),
             prompt,
             wait=True,
             budget_s=budget.seconds_for(task_path, root),

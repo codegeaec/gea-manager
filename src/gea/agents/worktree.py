@@ -26,9 +26,9 @@ class Worktree:
     workspace_id: str | None = None
 
     @property
-    def pane_name(self) -> str:
-        slug = self.task_id.lower().removeprefix("task-").replace(".", "-")
-        return f"wt-{slug}"[:20]
+    def slug(self) -> str:
+        """`001` for TASK-001, `004-1` for TASK-004.1 (used in the pane name)."""
+        return self.task_id.lower().removeprefix("task-").replace(".", "-")
 
 
 def _git(root: Path, *args: str) -> tuple[str, int]:

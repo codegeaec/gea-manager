@@ -10,7 +10,8 @@ from gea.agents import herdr, log, state
 from gea.i18n import t
 from gea.tasks import store
 
-MANAGED_PREFIXES = ("builder-", "wt-", "orchestrator-")
+# Panes named before the project prefix existed are still recognised.
+LEGACY_PREFIXES = ("builder-", "wt-", "orchestrator-")
 
 
 def _last_attempt(task_id: str) -> str:
@@ -21,13 +22,14 @@ def _last_attempt(task_id: str) -> str:
 
 
 def _managed_agents() -> list[tuple[str, str]]:
+    prefixes = (f"{herdr.project_prefix(Path.cwd())}-", *LEGACY_PREFIXES)
     result, err = herdr.herdr_json(["agent", "list"])
     if err:
         return []
     return [
         (a["name"], a.get("agent_status", "unknown"))
         for a in result.get("agents", [])
-        if str(a.get("name") or "").startswith(MANAGED_PREFIXES)
+        if str(a.get("name") or "").startswith(prefixes)
     ]
 
 

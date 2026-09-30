@@ -10,6 +10,8 @@ def isolated_machine(tmp_path_factory, monkeypatch):
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("GEA_HOME", str(home / "gea"))
     monkeypatch.setenv("GEA_LANG", "en")  # assertions read the English catalog
+    for var in ("HERDR_ENV", "HERDR_PANE_ID", "HERDR_WORKSPACE_ID"):
+        monkeypatch.delenv(var, raising=False)  # tests must not depend on running inside herdr
     dryrun.enable(False)
     yield
     dryrun.enable(False)

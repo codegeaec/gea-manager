@@ -119,7 +119,11 @@ def delegate_task(
             sound="done" if result == "done" else "request",
         )
 
-    pane_name = wt.pane_name if wt else f"builder-{agent.id}"
+    pane_name = (
+        herdr.pane_name_for(root, "wt", wt.slug)
+        if wt
+        else herdr.pane_name_for(root, "builder", agent.id)
+    )
     status = herdr.start_agent_pane(pane_name, agent.cli, agent.model, wt.path if wt else root)
     print(status)
     if status.startswith("BLOCKED") or "FAILED" in status or "!=" in status:

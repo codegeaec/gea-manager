@@ -121,7 +121,7 @@ Agents with ≥5 logged builds in a tier are ranked by verified success rate;
 `gea handoff [--to claude|codex|opencode|agy|kimi]` writes
 `<task root>/HANDOFF.md` from what is in flight (in-progress/review tasks,
 last delegation each, git state, pending checkpoints, exhausted pools).
-`--to` starts the new orchestrator in a herdr pane (`orchestrator-<cli>`),
+`--to` starts the new orchestrator in a herdr pane (`<prefix>-orchestrator-<cli>`),
 sends it "read HANDOFF.md", and offers to update `gea.json["primary"]`.
 Instructions are portable: every CLI reads `AGENTS.md`; the orchestrator role
 lives in `.agents/orchestrator.md`, which `CLAUDE.md` imports.

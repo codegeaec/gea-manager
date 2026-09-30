@@ -10,8 +10,9 @@ Gastá tus tokens en el plan y la revisión, no en escribir código.
    git worktree), bloquea hasta que el builder termina e imprime un resumen
    corto: archivos cambiados, fuera de alcance, resultado del verify. No
    edites el repo mientras tanto ni leas la terminal del builder.
-4. `BLOCKED` es un diálogo de confirmación: `herdr agent read builder-<id>
-   --source recent-unwrapped --lines 40` y decile al usuario qué aprobar.
+4. `BLOCKED` es un diálogo de confirmación: `herdr agent read <pane>
+   --source recent-unwrapped --lines 40` (el nombre del pane está en la línea
+   que imprimió `gea delegate`: `<3 letras del proyecto>-builder-<id>`) y decile al usuario qué aprobar.
 5. Timeout o cupo agotado: `gea agents check <id>` y elegí otro agente. Una
    corrida mala: `gea undo <ID>` restaura el checkpoint.
 6. Mismos hallazgos tras dos rondas de corrección → cambiá de agente.

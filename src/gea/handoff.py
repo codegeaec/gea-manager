@@ -117,11 +117,12 @@ def run_handoff(to: str | None = None, assume_yes: bool = False) -> int:
         return 0
 
     started = time.monotonic()
-    status = herdr.start_agent_pane(f"orchestrator-{to}", to, None, root)
+    pane = herdr.pane_name_for(root, "orchestrator", to)
+    status = herdr.start_agent_pane(pane, to, None, root)
     print(status)
     if status.startswith("BLOCKED") or "FAILED" in status or "!=" in status:
         return 1
-    herdr.prompt_pane(f"orchestrator-{to}", resume, wait=False)
+    herdr.prompt_pane(pane, resume, wait=False)
     log.append(
         {
             "kind": "handoff",

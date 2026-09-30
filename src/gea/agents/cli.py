@@ -52,7 +52,7 @@ def cmd_check(agent_id: str) -> int:
     if not profile:
         print(f"unknown agent: {agent_id}")
         return 1
-    text = herdr.read_pane(f"builder-{agent_id}")
+    text = herdr.read_pane(herdr.pane_name_for(Path.cwd(), "builder", agent_id))
     until = state.detect_exhaustion(text)
     if until is None:
         print("OK")
