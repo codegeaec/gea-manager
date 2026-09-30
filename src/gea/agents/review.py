@@ -56,7 +56,11 @@ def review_task(task_id: str, agent_id: str | None = None) -> int:
     review_before = _review_text(task_path)
     started = time.monotonic()
     ui.info(t("review.start", task_id=task_id, agent=reviewer.id, pool=builder_pool))
-    status = herdr.start_builder_pane(reviewer.id, reviewer.cli, reviewer.model, root)
+    cfg = config.load_project(root)
+    permissions = cfg.get("builders", {}).get("permissions", config.DEFAULT_PERMISSIONS)
+    if permissions == "yolo":
+        permissions = "safe"  # a review reads and writes findings only: never full access
+    status = herdr.start_builder_pane(reviewer.id, reviewer.cli, reviewer.model, root, permissions)
     print(status)
     result = "error"
     if not (status.startswith("BLOCKED") or "FAILED" in status or "!=" in status):

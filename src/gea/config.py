@@ -23,6 +23,11 @@ SCHEMA_VERSION = 1
 CLOSE_POLICIES = ("on-success", "never")
 DEFAULT_CLOSE = "on-success"
 
+# `builders.permissions`: "safe" (default) or "yolo" (no permission checks; only
+# allowed inside a worktree, see agents/delegate.py). Flags per CLI: agents/herdr.py.
+PERMISSION_MODES = ("safe", "yolo")
+DEFAULT_PERMISSIONS = "safe"
+
 AUTONOMY_LEVELS = ("supervised", "balanced", "autonomous")
 DEFAULT_AUTONOMY = "balanced"
 
@@ -71,9 +76,15 @@ def validate(data: dict[str, Any], path: Path) -> None:
     autonomy = data.get("autonomy", DEFAULT_AUTONOMY)
     if autonomy not in AUTONOMY_LEVELS:
         raise ConfigError(f"{path}: autonomy must be one of {', '.join(AUTONOMY_LEVELS)}")
-    close = data.get("builders", {}).get("close", DEFAULT_CLOSE)
+    builders = data.get("builders", {})
+    close = builders.get("close", DEFAULT_CLOSE)
     if close not in CLOSE_POLICIES:
         raise ConfigError(f"{path}: builders.close must be one of {', '.join(CLOSE_POLICIES)}")
+    if builders.get("permissions", DEFAULT_PERMISSIONS) not in PERMISSION_MODES:
+        raise ConfigError(
+            f"{path}: builders.permissions must be one of {', '.join(PERMISSION_MODES)}"
+        )
+    _validate_worktree_setup(builders.get("worktree", {}), path)
     _validate_tabs(data, path)
 
 
@@ -96,6 +107,21 @@ def _validate_tabs(data: dict[str, Any], path: Path) -> None:
                 raise ConfigError(f"{path}: tab '{label}': cwd must be relative, inside the repo")
         if command is not None and not isinstance(command, str):
             raise ConfigError(f"{path}: tab '{label}': command must be a string")
+
+
+def _validate_worktree_setup(setup: Any, path: Path) -> None:
+    """`builders.worktree`: {"copy": [relative paths], "setup": "shell command"}."""
+    if not isinstance(setup, dict):
+        raise ConfigError(f"{path}: builders.worktree must be an object")
+    command, copy = setup.get("setup"), setup.get("copy", [])
+    if command is not None and not isinstance(command, str):
+        raise ConfigError(f"{path}: builders.worktree.setup must be a string")
+    if not isinstance(copy, list):
+        raise ConfigError(f"{path}: builders.worktree.copy must be a list")
+    for item in copy:
+        parts = Path(item).parts if isinstance(item, str) else None
+        if parts is None or Path(item).is_absolute() or ".." in parts:
+            raise ConfigError(f"{path}: builders.worktree.copy entries must be relative paths")
 
 
 def _read_json(path: Path, default: dict[str, Any]) -> dict[str, Any]:

@@ -8,10 +8,10 @@ log, and makes sure it only ever removes worktrees it created itself.
 from __future__ import annotations
 
 import shutil
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
-from gea import paths, proc
+from gea import paths, proc, ui, verify
 from gea.agents import herdr, log
 
 CONFIG_FILES = ("gea.json", "gea.local.json")  # may be untracked: copy them in
@@ -24,6 +24,7 @@ class Worktree:
     branch: str
     base: str
     workspace_id: str | None = None
+    copied: list[str] = field(default_factory=list)  # untracked files put in by gea
 
     @property
     def slug(self) -> str:
@@ -36,8 +37,17 @@ def _git(root: Path, *args: str) -> tuple[str, int]:
     return out.strip(), code
 
 
-def create(task_id: str, repo_root: Path) -> Worktree | None:
-    """Create the task's worktree. None (with nothing left behind) on failure."""
+SETUP_TIMEOUT = 900  # e.g. `pnpm install` in a fresh checkout
+
+
+def create(
+    task_id: str, repo_root: Path, setup: dict | None = None
+) -> Worktree | None:
+    """Create the task's worktree. None (with nothing left behind) on failure.
+
+    `setup` is `builders.worktree`: `copy` = untracked files a fresh checkout
+    lacks (e.g. `.env`), `setup` = a command to run there (e.g. `pnpm install`).
+    A failing setup command removes the worktree again."""
     base, code = _git(repo_root, "rev-parse", "HEAD")
     if code != 0:
         return None
@@ -58,9 +68,21 @@ def create(task_id: str, repo_root: Path) -> Worktree | None:
     if err or not wt.path.is_dir():
         remove(wt, repo_root)
         return None
-    for name in CONFIG_FILES:
-        if (repo_root / name).exists() and not (wt.path / name).exists():
-            shutil.copy2(repo_root / name, wt.path / name)
+    setup = setup or {}
+    for name in [*CONFIG_FILES, *setup.get("copy", [])]:
+        source = repo_root / name
+        if source.is_file() and not (wt.path / name).exists():
+            (wt.path / name).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, wt.path / name)
+            if name not in CONFIG_FILES:
+                wt.copied.append(name)
+    command = setup.get("setup")
+    if command:
+        passed, tail = verify.execute(command, wt.path, timeout=SETUP_TIMEOUT)
+        if not passed:
+            ui.err(f"worktree setup `{command}` failed:\n{tail}")
+            remove(wt, repo_root, force=True)
+            return None
     return wt
 
 
@@ -79,13 +101,13 @@ def changed_files(wt: Worktree) -> list[str]:
     """Everything the builder changed relative to the base commit."""
     diff, _ = _git(wt.path, "diff", "--name-only", wt.base)
     new, _ = _git(wt.path, "ls-files", "--others", "--exclude-standard")
-    ignore = set(CONFIG_FILES)
+    ignore = set(CONFIG_FILES) | set(wt.copied)
     return sorted((set(diff.splitlines()) | set(new.splitlines())) - ignore)
 
 
 def commit_all(wt: Worktree, message: str) -> bool:
     """Commit the builder's output on the task branch so it can be merged."""
-    _git(wt.path, "add", "-A", "--", ".", *(f":!{n}" for n in CONFIG_FILES))
+    _git(wt.path, "add", "-A", "--", ".", *(f":!{n}" for n in [*CONFIG_FILES, *wt.copied]))
     _out, code = _git(wt.path, "commit", "-q", "-m", message)
     return code == 0
 

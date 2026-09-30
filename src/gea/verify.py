@@ -16,10 +16,12 @@ from gea import config, proc, ui
 from gea.i18n import t
 
 
-def execute(command: str, cwd: Path | None = None) -> tuple[bool, str]:
+def execute(
+    command: str, cwd: Path | None = None, timeout: int = 300
+) -> tuple[bool, str]:
     """Run one command through bash (in `cwd` if given). Returns (passed, last 20 lines)."""
     script = f"cd {shlex.quote(str(cwd))} && {command}" if cwd else command
-    out, err, code = proc.run(["bash", "-c", script], timeout=300)
+    out, err, code = proc.run(["bash", "-c", script], timeout=timeout)
     return code == 0, "\n".join((out + err).strip().splitlines()[-20:])
 
 

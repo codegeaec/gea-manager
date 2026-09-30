@@ -42,7 +42,11 @@ def cmd_start(agent_id: str) -> int:
     if not profile:
         print(f"unknown agent: {agent_id}")
         return 1
-    result = herdr.start_builder_pane(agent_id, profile.cli, profile.model, Path.cwd())
+    cfg = config.load_project(Path.cwd())
+    permissions = cfg.get("builders", {}).get("permissions", config.DEFAULT_PERMISSIONS)
+    if permissions == "yolo":
+        permissions = "safe"  # yolo only ever applies inside `gea delegate --worktree`
+    result = herdr.start_builder_pane(agent_id, profile.cli, profile.model, Path.cwd(), permissions)
     print(result)
     return 0
 

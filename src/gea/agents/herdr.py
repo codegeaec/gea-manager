@@ -21,11 +21,34 @@ SPLIT_WIDE_RATIO = 2.0
 CLI_ARGS: dict[str, dict[str, list[str]]] = {
     "opencode": {"base": ["--agent", "builder"], "model": ["--model", "{model}"]},
     "codex": {"base": [], "model": ["-m", "{model}"]},
-    "agy": {"base": ["--dangerously-skip-permissions"], "model": ["--model", "{model}"]},
+    "agy": {"base": [], "model": ["--model", "{model}"]},
     "claude": {"base": [], "model": []},
     "kimi": {"base": [], "model": ["--model", "{model}"]},
 }
 DEFAULT_CLI_ARGS: dict[str, list[str]] = {"base": [], "model": []}
+
+# Flags that stop a *builder* from stalling on permission dialogs (herdr cannot
+# answer them by script, so an unanswered one leaves the run BLOCKED). Never
+# applied to the orchestrator's own tab. `builders.permissions` in gea.json:
+# - safe: as unattended as each CLI allows while staying sandboxed/limited
+# - yolo: no permission checks at all — gea only allows it inside a worktree
+# Flags checked against each CLI's `--help`; kimi's are unknown, so it gets none.
+PERMISSION_ARGS: dict[str, dict[str, list[str]]] = {
+    "claude": {
+        "safe": ["--permission-mode", "acceptEdits"],
+        "yolo": ["--dangerously-skip-permissions"],
+    },
+    "codex": {
+        "safe": ["--sandbox", "workspace-write", "--ask-for-approval", "never"],
+        "yolo": ["--dangerously-bypass-approvals-and-sandbox"],
+    },
+    "opencode": {"safe": [], "yolo": ["--auto"]},  # safe: opencode.jsonc rules apply
+    "agy": {"safe": ["--mode", "accept-edits"], "yolo": ["--dangerously-skip-permissions"]},
+}
+
+
+def permission_args(cli: str, mode: str) -> list[str]:
+    return list(PERMISSION_ARGS.get(cli, {}).get(mode, []))
 
 INTEGRATION_TARGETS: dict[str, str] = {
     "opencode": "opencode",
@@ -96,14 +119,25 @@ def pane_name_for(repo_root: Path, *parts: str) -> str:
     return free_agent_name(base, os.environ.get("HERDR_WORKSPACE_ID"))
 
 
-def start_builder_pane(agent_id: str, cli: str, model: str | None, cwd: Path) -> str:
+def start_builder_pane(
+    agent_id: str, cli: str, model: str | None, cwd: Path, permissions: str = "safe"
+) -> str:
     """Start (or reuse) this project's `<prefix>-builder-<agent_id>` pane. Returns
     a short human-readable status line, same convention as `gea agents start`."""
-    return start_agent_pane(pane_name_for(cwd, "builder", agent_id), cli, model, cwd)
+    return start_agent_pane(
+        pane_name_for(cwd, "builder", agent_id), cli, model, cwd, permission_args(cli, permissions)
+    )
 
 
-def start_agent_pane(pane_name: str, cli: str, model: str | None, cwd: Path) -> str:
-    """Start (or reuse) a pane named `pane_name` running `cli`."""
+def start_agent_pane(
+    pane_name: str,
+    cli: str,
+    model: str | None,
+    cwd: Path,
+    extra_args: list[str] | None = None,
+) -> str:
+    """Start (or reuse) a pane named `pane_name` running `cli` (`extra_args`:
+    e.g. the builder permission flags)."""
     if os.environ.get("HERDR_ENV") != "1":
         return "HERDR_ENV != 1 — this must run inside a herdr pane"
     caller_pane = os.environ.get("HERDR_PANE_ID")
@@ -162,7 +196,7 @@ def start_agent_pane(pane_name: str, cli: str, model: str | None, cwd: Path) -> 
         "--timeout", "60000", "--",
     ]
     cli_cfg = CLI_ARGS.get(cli, DEFAULT_CLI_ARGS)
-    start_args += cli_cfg["base"]
+    start_args += cli_cfg["base"] + list(extra_args or [])
     if model:
         start_args += [flag.format(model=model) for flag in cli_cfg["model"]]
     result, err = herdr_json(start_args, timeout=65)

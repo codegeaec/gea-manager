@@ -92,9 +92,14 @@ def delegate_task(
     cfg = config.load_project(root)
     if use_worktree is None:
         use_worktree = bool(cfg.get("builders", {}).get("worktrees"))
+    builders = cfg.get("builders", {})
+    permissions = builders.get("permissions", config.DEFAULT_PERMISSIONS)
+    if permissions == "yolo" and not use_worktree:
+        ui.err(t("delegate.yolo_needs_worktree"))
+        return 1
     wt = None
     if use_worktree:
-        wt = worktree.create(task_id, root)
+        wt = worktree.create(task_id, root, builders.get("worktree"))
         if wt is None:
             ui.err(t("delegate.worktree_failed"))
             return 1
@@ -137,7 +142,13 @@ def delegate_task(
         if wt
         else herdr.pane_name_for(root, "builder", agent.id)
     )
-    status = herdr.start_agent_pane(pane_name, agent.cli, agent.model, wt.path if wt else root)
+    status = herdr.start_agent_pane(
+        pane_name,
+        agent.cli,
+        agent.model,
+        wt.path if wt else root,
+        herdr.permission_args(agent.cli, permissions),
+    )
     print(status)
     if status.startswith("BLOCKED") or "FAILED" in status or "!=" in status:
         if wt:  # a worktree gea just created must not be left half-used

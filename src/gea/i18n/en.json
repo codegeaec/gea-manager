@@ -122,5 +122,6 @@
   "exhausted.agent": "{agent} is out of quota (pool {pool}) until {until} — marked unavailable",
   "exhausted.closed": "{pane}: pane closed",
   "exhausted.next": "try {agent}: {cmd}",
-  "exhausted.none": "no other agent is available — implement it yourself or wait for the reset"
+  "exhausted.none": "no other agent is available — implement it yourself or wait for the reset",
+  "delegate.yolo_needs_worktree": "builders.permissions is \"yolo\" (no permission checks), which gea only allows inside a worktree — use `gea delegate --worktree` or set builders.worktrees: true"
 }
