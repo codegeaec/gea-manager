@@ -7,7 +7,7 @@ opencode-roles logic, which doesn't belong in a general-purpose tool.
 - Workspace label = the repo's basename, slugified.
 - Tabs, created idempotently (skipped if a tab with that label already
   exists), in this order:
-  1. `<primary>` (gea.json's `primary`, "claude" by default) running that
+  1. `<planner>` (`agents.planner`, "claude" by default) running that
      agent's CLI. On a workspace gea has just created, it **reuses the tab and
      pane herdr creates with the workspace** (`tab rename` + `agent start
      --pane <root pane>`), so no stray "1" tab is left; if the rename fails it
@@ -35,11 +35,12 @@ opencode-roles logic, which doesn't belong in a general-purpose tool.
 - Already inside herdr (`HERDR_ENV=1`): just focuses the workspace instead
   of re-executing — a pane can't exec its way out from under itself.
 
-## First-time model selection (claude only)
+## First-time model selection
 
 `_ensure_agent_tab` reports whether it actually created and started the
-tab, as opposed to finding one already running. Only on that first
-creation, if the primary agent is `claude` and `gea.json`'s `primaryModel`
-is set (asked by `gea init`, see `docs/init.md`), `gea` sends `/model
+tab, as opposed to finding one already running. For CLIs with a model flag
+(codex, opencode, agy, kimi) `agents.plannerModel` goes in as that flag at start.
+Claude has none, so only on that first creation, if `agents.plannerModel` is
+set (asked by `gea init`, see `docs/init.md`), `gea` sends `/model
 <value>` to that pane (`herdr agent prompt <agent name> "/model <value>"`, not
 waited on). Reopening the workspace later never resends it.

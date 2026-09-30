@@ -19,13 +19,15 @@ project. `gea doctor` checks both.
    make a gea file unnecessary (e.g. `convenciones-commits.md` covers
    `commit-conventions.md`), tasks in another layout, a project-level shadcn
    MCP server.
-3. Asks: primary agent, `/model opusplan` for Claude, tasks location
+3. Asks: planner, its model (read from the CLI) and subagents (`agents` in
+   `gea.local.json`; the same prompts as `gea agents manage`), tasks location
    (`home` = `~/gea/projects/<name>` behind a gitignored `.gea` symlink, or
    `repo` = versioned `.gea/`), the **three languages one by one** —
    agents (`AGENTS.md`, `CLAUDE.md`, `.agents/*`), documents (`docs/*`, task
    templates) and commits, each defaulting to the previous answer —
-   builder autonomy, the detected verify commands, and which detected
-   builder agents this project may use (`builders.allow`).
+   builder autonomy and the detected verify commands. Subagents can be any
+   detected profile or a custom one (another model of an installed CLI); models
+   are picked from the list each CLI reports.
 4. Writes `gea.json` (policy, committed) and `gea.local.json` (personal,
    gitignored), then, per file:
 
@@ -74,10 +76,9 @@ every imported file tracked and clean in git and asks for confirmation.
 `gea verify` (`src/gea/verify.py`) runs `gea.json["verify"]` one command at a
 time via `bash -c`, printing ✓/✗ and the tail of a failing command's output.
 
-## Primary model (claude only)
+## Planner model
 
-If the primary agent is Claude Code, `gea init` asks whether to
-automatically set `/model opusplan` the first time `gea` creates that
-project's claude tab (`gea.json`'s `primaryModel`, recommended default:
-yes). `gea` (see `docs/workspace.md`) only sends it on the tab's actual
-first creation.
+`gea init` asks for the planner's model (`agents.plannerModel`), suggesting
+`opusplan` for Claude Code. `gea` (see `docs/workspace.md`) applies it only when
+it creates the planner's tab: Claude gets `/model <value>` once, every other CLI
+its model flag at start. Change it later with `gea agents manage`.

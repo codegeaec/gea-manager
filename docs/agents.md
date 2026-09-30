@@ -9,11 +9,19 @@ instead of per-repo:
 - `~/gea/state.json` — which pools are exhausted and until when. Global on
   purpose: a rate limit belongs to the account, not to one project, so it
   now carries over between repos instead of resetting per-project.
-- `gea.json["builders"]["allow"]` — optional per-project narrowing to a
-  subset of profile ids; `["builders"]["mode"]` is `ask`/`auto`.
+- `agents` in `gea.local.json` (schema and resolution rules in
+  `src/gea/agents/spec.py`, README "Agentes"): the planner CLI/model and the
+  project's subagents — detected ids, model overrides and custom entries — in
+  priority order. It replaces the old `primary`, `primaryModel` and
+  `builders.allow`, which are still read and migrate on save.
+  `["builders"]["mode"]` is `ask`/`auto`.
+- Models are read from each CLI (`agents/models.py`: `opencode models`,
+  `agy models`, `codex debug models`; claude aliases; kimi free text).
+  `gea agents manage` (`agents/manage.py`) edits all of this interactively, and
+  `gea agents planner|add|remove|models|list` do it from scripts.
 
-`gea agents available` prints the mode and every non-exhausted, allowed
-profile. `gea agents start <id>` reuses an existing `<prefix>-builder-<id>` herdr
+`gea agents available` prints the mode and every non-exhausted subagent
+of the project. `gea agents start <id>` reuses an existing `<prefix>-builder-<id>` herdr
 pane or splits a sibling pane in the current tab (same heuristic as the
 Cotizaciones skill: wide pane splits right, narrow/tall splits down).
 `gea agents check <id>` reads the pane and marks its whole pool exhausted
