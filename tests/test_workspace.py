@@ -1,6 +1,10 @@
 from gea import workspace
 
 
+def _ws1(label, root):
+    return workspace.Workspace("ws-1")
+
+
 def test_safe_label_slugifies_name():
     assert workspace._safe_label("My Cool Project!") == "my-cool-project"
     assert workspace._safe_label("") == "repo"
@@ -16,7 +20,8 @@ def test_find_or_create_workspace_reuses_existing(monkeypatch):
             else ({}, None)
         ),
     )
-    assert workspace._find_or_create_workspace("demo", __import__("pathlib").Path("/tmp")) == "ws-1"
+    found = workspace._find_or_create_workspace("demo", __import__("pathlib").Path("/tmp"))
+    assert found == workspace.Workspace("ws-1")  # reused: no initial tab to adopt
 
 
 def test_find_or_create_workspace_creates_when_absent(monkeypatch, tmp_path):
@@ -27,12 +32,16 @@ def test_find_or_create_workspace_creates_when_absent(monkeypatch, tmp_path):
         if cmd[:2] == ["workspace", "list"]:
             return {"workspaces": []}, None
         if cmd[:2] == ["workspace", "create"]:
-            return {"workspace": {"workspace_id": "ws-new"}}, None
+            return {
+                "workspace": {"workspace_id": "ws-new"},
+                "tab": {"tab_id": "ws-new:t1"},
+                "root_pane": {"pane_id": "ws-new:p1"},
+            }, None
         return {}, None
 
     monkeypatch.setattr(workspace, "herdr_json", fake_herdr_json)
-    ws_id = workspace._find_or_create_workspace("demo", tmp_path)
-    assert ws_id == "ws-new"
+    ws = workspace._find_or_create_workspace("demo", tmp_path)
+    assert ws == workspace.Workspace("ws-new", "ws-new:t1", "ws-new:p1")
     assert any(cmd[:2] == ["workspace", "create"] for cmd in calls)
 
 
@@ -85,7 +94,7 @@ def test_ensure_agent_tab_returns_false_when_start_fails(monkeypatch, tmp_path):
 def test_open_or_focus_execs_herdr_when_outside(monkeypatch, tmp_path):
     monkeypatch.delenv("HERDR_ENV", raising=False)
     monkeypatch.setattr(workspace, "_find_repo_root", lambda: tmp_path)
-    monkeypatch.setattr(workspace, "_find_or_create_workspace", lambda label, root: "ws-1")
+    monkeypatch.setattr(workspace, "_find_or_create_workspace", _ws1)
     monkeypatch.setattr(workspace, "_ensure_agent_tab", lambda *a, **k: None)
     monkeypatch.setattr(workspace, "_ensure_plain_tab", lambda *a, **k: None)
     execed = []
@@ -100,7 +109,7 @@ def test_open_or_focus_sets_model_on_first_claude_tab(monkeypatch, tmp_path):
     )
     monkeypatch.setenv("HERDR_ENV", "1")
     monkeypatch.setattr(workspace, "_find_repo_root", lambda: tmp_path)
-    monkeypatch.setattr(workspace, "_find_or_create_workspace", lambda label, root: "ws-1")
+    monkeypatch.setattr(workspace, "_find_or_create_workspace", _ws1)
     monkeypatch.setattr(workspace, "_ensure_agent_tab", lambda *a, **k: True)
     monkeypatch.setattr(workspace, "_ensure_plain_tab", lambda *a, **k: None)
     monkeypatch.setattr(workspace, "herdr_json", lambda cmd, timeout=15: ({}, None))
@@ -109,7 +118,8 @@ def test_open_or_focus_sets_model_on_first_claude_tab(monkeypatch, tmp_path):
         workspace, "prompt_pane", lambda pane, msg, wait=True: prompts.append((pane, msg, wait))
     )
     workspace.open_or_focus()
-    assert prompts == [("claude", "/model opusplan", False)]
+    expected = workspace._agent_name("claude", workspace._safe_label(tmp_path.name))
+    assert prompts == [(expected, "/model opusplan", False)]
 
 
 def test_open_or_focus_does_not_set_model_when_tab_reused(monkeypatch, tmp_path):
@@ -118,7 +128,7 @@ def test_open_or_focus_does_not_set_model_when_tab_reused(monkeypatch, tmp_path)
     )
     monkeypatch.setenv("HERDR_ENV", "1")
     monkeypatch.setattr(workspace, "_find_repo_root", lambda: tmp_path)
-    monkeypatch.setattr(workspace, "_find_or_create_workspace", lambda label, root: "ws-1")
+    monkeypatch.setattr(workspace, "_find_or_create_workspace", _ws1)
     monkeypatch.setattr(workspace, "_ensure_agent_tab", lambda *a, **k: False)
     monkeypatch.setattr(workspace, "_ensure_plain_tab", lambda *a, **k: None)
     monkeypatch.setattr(workspace, "herdr_json", lambda cmd, timeout=15: ({}, None))
@@ -134,7 +144,7 @@ def test_open_or_focus_does_not_set_model_without_primary_model(monkeypatch, tmp
     (tmp_path / "gea.json").write_text('{"primary": "claude"}', encoding="utf-8")
     monkeypatch.setenv("HERDR_ENV", "1")
     monkeypatch.setattr(workspace, "_find_repo_root", lambda: tmp_path)
-    monkeypatch.setattr(workspace, "_find_or_create_workspace", lambda label, root: "ws-1")
+    monkeypatch.setattr(workspace, "_find_or_create_workspace", _ws1)
     monkeypatch.setattr(workspace, "_ensure_agent_tab", lambda *a, **k: True)
     monkeypatch.setattr(workspace, "_ensure_plain_tab", lambda *a, **k: None)
     monkeypatch.setattr(workspace, "herdr_json", lambda cmd, timeout=15: ({}, None))
@@ -149,7 +159,7 @@ def test_open_or_focus_does_not_set_model_without_primary_model(monkeypatch, tmp
 def test_open_or_focus_focuses_when_inside_herdr(monkeypatch, tmp_path):
     monkeypatch.setenv("HERDR_ENV", "1")
     monkeypatch.setattr(workspace, "_find_repo_root", lambda: tmp_path)
-    monkeypatch.setattr(workspace, "_find_or_create_workspace", lambda label, root: "ws-1")
+    monkeypatch.setattr(workspace, "_find_or_create_workspace", _ws1)
     monkeypatch.setattr(workspace, "_ensure_agent_tab", lambda *a, **k: None)
     monkeypatch.setattr(workspace, "_ensure_plain_tab", lambda *a, **k: None)
     calls = []
@@ -162,3 +172,128 @@ def test_open_or_focus_focuses_when_inside_herdr(monkeypatch, tmp_path):
     code = workspace.open_or_focus()
     assert code == 0
     assert ["workspace", "focus", "ws-1"] in calls
+
+
+class FakeHerdr:
+    """Just enough of herdr for the tab logic: records every call."""
+
+    def __init__(self, tabs=(), rename_error=None):
+        self.calls = []
+        self.tabs = [{"label": label, "tab_id": f"t-{label}"} for label in tabs]
+        self.rename_error = rename_error
+
+    def __call__(self, cmd, timeout=15):
+        self.calls.append(cmd)
+        if cmd[:2] == ["tab", "list"]:
+            return {"tabs": list(self.tabs)}, None
+        if cmd[:2] == ["tab", "create"]:
+            label = cmd[cmd.index("--label") + 1]
+            self.tabs.append({"label": label, "tab_id": f"t-{label}"})
+            return {"root_pane": {"pane_id": f"pane-{label}"}}, None
+        if cmd[:2] == ["tab", "rename"]:
+            if self.rename_error:
+                return {}, self.rename_error
+            self.tabs.append({"label": cmd[3], "tab_id": cmd[2]})
+            return {}, None
+        return {}, None
+
+    def named(self, *prefix):
+        return [c for c in self.calls if c[: len(prefix)] == list(prefix)]
+
+
+def test_new_workspace_reuses_its_first_tab_for_the_primary_agent(monkeypatch, tmp_path):
+    herdr = FakeHerdr()
+    monkeypatch.setattr(workspace, "herdr_json", herdr)
+    created = workspace._ensure_agent_tab(
+        "ws-1", tmp_path, "claude", "claude", initial=("ws-1:t1", "ws-1:p1")
+    )
+    assert created is True
+    assert herdr.named("tab", "rename") == [["tab", "rename", "ws-1:t1", "claude"]]
+    assert not herdr.named("tab", "create")  # no second tab, so no stray "1"
+    start = herdr.named("agent", "start")[0]
+    assert start[start.index("--pane") + 1] == "ws-1:p1"
+
+
+def test_falls_back_to_a_new_tab_when_the_rename_fails(monkeypatch, tmp_path):
+    herdr = FakeHerdr(rename_error="nope")
+    monkeypatch.setattr(workspace, "herdr_json", herdr)
+    assert workspace._ensure_agent_tab(
+        "ws-1", tmp_path, "claude", "claude", initial=("ws-1:t1", "ws-1:p1")
+    )
+    assert herdr.named("tab", "create")
+
+
+def test_existing_workspace_is_left_untouched(monkeypatch, tmp_path):
+    herdr = FakeHerdr(tabs=["claude"])
+    monkeypatch.setattr(workspace, "herdr_json", herdr)
+    assert workspace._ensure_agent_tab("ws-1", tmp_path, "claude", "claude") is False
+    assert not herdr.named("tab", "rename") and not herdr.named("tab", "create")
+
+
+def test_open_or_focus_passes_the_initial_tab_and_creates_terminal_and_extras(
+    monkeypatch, tmp_path
+):
+    (tmp_path / "apps" / "web").mkdir(parents=True)
+    (tmp_path / "gea.json").write_text(
+        '{"primary": "claude", "tabs": [{"label": "web", "cwd": "apps/web"}]}'
+    )
+    monkeypatch.setenv("HERDR_ENV", "1")
+    monkeypatch.setattr(workspace, "_find_repo_root", lambda: tmp_path)
+    monkeypatch.setattr(
+        workspace,
+        "_find_or_create_workspace",
+        lambda label, root: workspace.Workspace("ws-1", "ws-1:t1", "ws-1:p1"),
+    )
+    herdr = FakeHerdr()
+    monkeypatch.setattr(workspace, "herdr_json", herdr)
+    monkeypatch.setattr(workspace, "prompt_pane", lambda *a, **k: None)
+    workspace.open_or_focus()
+    labels = [c[c.index("--label") + 1] for c in herdr.named("tab", "create")]
+    assert labels == ["terminal", "web"]  # no "claude" create: it adopted the initial tab
+    web = next(c for c in herdr.named("tab", "create") if "web" in c)
+    assert web[web.index("--cwd") + 1] == str(tmp_path / "apps" / "web")
+
+
+def test_extra_tab_command_runs_once_only_when_the_tab_is_created(monkeypatch, tmp_path):
+    (tmp_path / "api").mkdir()
+    tabs = [{"label": "api", "cwd": "api", "command": "pnpm dev"}]
+    herdr = FakeHerdr()
+    monkeypatch.setattr(workspace, "herdr_json", herdr)
+    workspace._ensure_extra_tabs("ws-1", tmp_path, tabs)
+    assert herdr.named("pane", "run") == [["pane", "run", "pane-api", "pnpm dev"]]
+    workspace._ensure_extra_tabs("ws-1", tmp_path, tabs)  # reopen: tab exists now
+    assert len(herdr.named("pane", "run")) == 1 and len(herdr.named("tab", "create")) == 1
+
+
+def test_extra_tab_without_command_is_just_a_shell_and_missing_cwd_is_skipped(
+    monkeypatch, tmp_path, capsys
+):
+    (tmp_path / "web").mkdir()
+    herdr = FakeHerdr()
+    monkeypatch.setattr(workspace, "herdr_json", herdr)
+    workspace._ensure_extra_tabs(
+        "ws-1", tmp_path, [{"label": "gone", "cwd": "missing"}, {"label": "web", "cwd": "web"}]
+    )
+    assert not herdr.named("pane", "run")
+    assert [c[c.index("--label") + 1] for c in herdr.named("tab", "create")] == ["web"]
+    assert "missing" in capsys.readouterr().out
+
+
+def test_agent_names_are_unique_per_project_and_valid_for_herdr():
+    import re
+
+    name = workspace._agent_name("claude", "cotizaciones")
+    assert name == "claude-cotizaciones" != workspace._agent_name("claude", "gea-manager")
+    long = workspace._agent_name("opencode", "a-very-long-project-name-that-keeps-going-on")
+    assert len(long) <= 32 and re.fullmatch(r"[a-z][a-z0-9_-]{0,31}", long)
+    assert not long.endswith(("-", "_"))
+
+
+def test_the_agent_is_started_under_the_project_specific_name(monkeypatch, tmp_path):
+    herdr = FakeHerdr()
+    monkeypatch.setattr(workspace, "herdr_json", herdr)
+    workspace._ensure_agent_tab(
+        "ws-1", tmp_path, "claude", "claude", ("t1", "p1"), agent_name="claude-demo"
+    )
+    assert herdr.named("agent", "start")[0][2] == "claude-demo"
+    assert herdr.named("tab", "rename") == [["tab", "rename", "t1", "claude"]]  # tab label stays

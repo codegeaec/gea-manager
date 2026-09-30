@@ -45,6 +45,9 @@ DEFAULT_PROJECT_CONFIG: dict[str, Any] = {
     "builders": {"mode": "ask", "allow": [], "ponytail": True},
     "lang": {"commits": "es", "docs": "es"},
     "pm": None,
+    # Extra herdr tabs `gea` opens next to the agent and `terminal`, e.g. for a
+    # monorepo: [{"label": "web", "cwd": "apps/web", "command": "pnpm dev"}].
+    "tabs": [],
     # How much freedom a builder gets (see AUTONOMY_LEVELS and autonomy.py).
     "autonomy": DEFAULT_AUTONOMY,
 }
@@ -62,6 +65,28 @@ def validate(data: dict[str, Any], path: Path) -> None:
     autonomy = data.get("autonomy", DEFAULT_AUTONOMY)
     if autonomy not in AUTONOMY_LEVELS:
         raise ConfigError(f"{path}: autonomy must be one of {', '.join(AUTONOMY_LEVELS)}")
+    _validate_tabs(data, path)
+
+
+def _validate_tabs(data: dict[str, Any], path: Path) -> None:
+    tabs = data.get("tabs", [])
+    if not isinstance(tabs, list):
+        raise ConfigError(f"{path}: tabs must be a list")
+    taken = {(data.get("primary") or "claude").lower(), "terminal"}
+    for entry in tabs:
+        label = entry.get("label") if isinstance(entry, dict) else None
+        if not isinstance(label, str) or not label.strip():
+            raise ConfigError(f"{path}: every tab needs a non-empty label")
+        if label.strip().lower() in taken:
+            raise ConfigError(f"{path}: tab label '{label}' is duplicated or reserved")
+        taken.add(label.strip().lower())
+        cwd, command = entry.get("cwd"), entry.get("command")
+        if cwd is not None:
+            parts = Path(cwd).parts if isinstance(cwd, str) else None
+            if parts is None or Path(cwd).is_absolute() or ".." in parts:
+                raise ConfigError(f"{path}: tab '{label}': cwd must be relative, inside the repo")
+        if command is not None and not isinstance(command, str):
+            raise ConfigError(f"{path}: tab '{label}': command must be a string")
 
 
 def _read_json(path: Path, default: dict[str, Any]) -> dict[str, Any]:
@@ -139,7 +164,9 @@ def load_project(repo_root: Path) -> dict[str, Any]:
     if not isinstance(personal, dict):
         raise ConfigError(f"{local_path}: expected a JSON object")
     personal.pop("schema_version", None)
-    return _deep_merge(shared, personal)
+    merged = _deep_merge(shared, personal)
+    _validate_tabs(merged, local_path)  # a personal tabs list replaces the shared one
+    return merged
 
 
 def split_project(data: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:

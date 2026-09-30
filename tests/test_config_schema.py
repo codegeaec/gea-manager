@@ -42,3 +42,43 @@ def test_dry_run_does_not_write(tmp_path):
     dryrun.enable(True)
     config.save_project(tmp_path, {"schema_version": 1})
     assert not (tmp_path / "gea.json").exists()
+
+
+def _tabs(tmp_path, tabs, **extra):
+    (tmp_path / "gea.json").write_text(json.dumps({"tabs": tabs, **extra}))
+    return config.load_project(tmp_path)
+
+
+def test_valid_tabs_load(tmp_path):
+    tabs = [{"label": "web", "cwd": "apps/web", "command": "pnpm dev"}, {"label": "api"}]
+    assert _tabs(tmp_path, tabs)["tabs"] == tabs
+    assert config.load_project(tmp_path / "empty")["tabs"] == []
+
+
+@pytest.mark.parametrize(
+    "tabs",
+    [
+        "web",
+        [{"cwd": "x"}],
+        [{"label": " "}],
+        [{"label": "terminal"}],
+        [{"label": "claude"}],
+        [{"label": "Web"}, {"label": "web"}],
+        [{"label": "a", "cwd": "/etc"}],
+        [{"label": "a", "cwd": "../other"}],
+        [{"label": "a", "cwd": "x/../../y"}],
+        [{"label": "a", "command": 3}],
+    ],
+)
+def test_invalid_tabs_are_refused(tmp_path, tabs):
+    with pytest.raises(config.ConfigError):
+        _tabs(tmp_path, tabs)
+
+
+def test_a_personal_tabs_list_replaces_the_shared_one_and_is_validated(tmp_path):
+    (tmp_path / "gea.json").write_text(json.dumps({"tabs": [{"label": "web"}]}))
+    (tmp_path / "gea.local.json").write_text(json.dumps({"tabs": [{"label": "mine"}]}))
+    assert config.load_project(tmp_path)["tabs"] == [{"label": "mine"}]
+    (tmp_path / "gea.local.json").write_text(json.dumps({"tabs": [{"label": "a", "cwd": "/x"}]}))
+    with pytest.raises(config.ConfigError):
+        config.load_project(tmp_path)
