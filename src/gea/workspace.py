@@ -142,6 +142,7 @@ def _ensure_plain_tab(workspace_id: str, repo_root: Path, label: str) -> None:
 
 
 def _ensure_git_tab(workspace_id: str, repo_root: Path) -> None:
+    platform.refresh_mise_shims_on_path()  # gea may run outside a `mise activate` shell
     if not platform.which("lazygit") or _existing_tab_id(workspace_id, "git"):
         return
     pane_id = _create_tab(workspace_id, repo_root, "git")
