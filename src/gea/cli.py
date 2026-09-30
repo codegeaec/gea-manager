@@ -66,6 +66,9 @@ def _build_parser() -> argparse.ArgumentParser:
     task_status.add_argument("new_status")
     task_done = task_sub.add_parser("done", help="close a task (move to done/)")
     task_done.add_argument("task_id")
+    task_done.add_argument(
+        "--yes", "-y", action="store_true", help="also remove the task's merged worktree and branch"
+    )
 
     subtask_parser = subparsers.add_parser("subtask", help="manage subtasks")
     subtask_sub = subtask_parser.add_subparsers(dest="subtask_command")

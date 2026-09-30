@@ -87,13 +87,27 @@ def create(
 
 
 def remove(wt: Worktree, repo_root: Path, force: bool = False) -> bool:
-    """Remove a worktree gea created. Never deletes the branch."""
+    """Remove a worktree gea created. Never deletes the branch (see `delete_branch`)."""
     if wt.workspace_id:
         cmd = ["worktree", "remove", "--workspace", wt.workspace_id]
         _result, err = herdr.herdr_json(cmd + (["--force"] if force else []), timeout=60)
         return err is None
     args = ["worktree", "remove", str(wt.path)] + (["--force"] if force else [])
     _out, code = _git(repo_root, *args)
+    return code == 0
+
+
+def branch_merged(wt: Worktree, repo_root: Path) -> bool:
+    """True when the task branch is already contained in the current HEAD."""
+    if not wt.branch:
+        return False
+    _out, code = _git(repo_root, "merge-base", "--is-ancestor", wt.branch, "HEAD")
+    return code == 0
+
+
+def delete_branch(wt: Worktree, repo_root: Path) -> bool:
+    """Delete the task branch; `-d` refuses unless it is fully merged."""
+    _out, code = _git(repo_root, "branch", "-d", wt.branch)
     return code == 0
 
 

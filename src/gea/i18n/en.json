@@ -86,7 +86,7 @@
   "prune.removed": "removed: {names}",
   "delegate.worktree": "  branch: {branch} in {path} (review, then merge it)",
   "delegate.worktree_failed": "could not create the worktree — nothing was left behind",
-  "worktree.remove": "Remove the worktree of {task_id} ({path})? The branch is kept.",
+  "worktree.remove": "Remove the worktree of {task_id} ({path}) and its merged branch?",
   "worktree.removed": "worktree of {task_id} removed",
   "worktree.remove_failed": "could not remove the worktree at {path}",
   "stats.empty": "no delegations logged yet",
@@ -154,5 +154,8 @@
   "agents.removed": "removed {id}",
   "agents.unknown_ids": "not detected on this machine (skipped): {ids}",
   "agents.unknown_cli": "unknown CLI '{cli}' (use {options})",
-  "init.agents_hint": "Change the planner, models or subagents any time with `gea agents manage`."
+  "init.agents_hint": "Change the planner, models or subagents any time with `gea agents manage`.",
+  "worktree.not_merged": "branch {branch} is not merged into HEAD — worktree kept at {path}",
+  "worktree.hint_yes": "worktree of {task_id} kept at {path} — run `gea task done {task_id} --yes` to remove it and its merged branch",
+  "worktree.branch_deleted": "branch {branch} deleted"
 }

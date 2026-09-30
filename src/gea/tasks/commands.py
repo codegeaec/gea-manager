@@ -22,8 +22,10 @@ def _read_issue(number: str) -> dict | None:
     return issue
 
 
-def _offer_worktree_removal(task_id: str) -> None:
-    """A task closed with a live gea-created worktree: offer to remove it."""
+def _offer_worktree_removal(task_id: str, assume_yes: bool = False) -> None:
+    """A task closed with a live gea-created worktree: clean it up once its
+    branch is merged. Never blocks: without --yes it only asks on a terminal."""
+    import sys
     from pathlib import Path
 
     from gea import ui
@@ -33,13 +35,23 @@ def _offer_worktree_removal(task_id: str) -> None:
     wt = worktree.lookup(task_id)
     if wt is None:
         return
-    if not ui.ask_yes_no(t("worktree.remove", task_id=task_id, path=wt.path), default=False):
+    root = Path.cwd()
+    if not worktree.branch_merged(wt, root):
+        ui.warn(t("worktree.not_merged", branch=wt.branch, path=wt.path))
         return
-    if worktree.remove(wt, Path.cwd()):
-        log.append({"kind": "worktree-removed", "task_id": task_id})
-        ui.ok(t("worktree.removed", task_id=task_id))
-    else:
+    if not assume_yes:
+        if not sys.stdin.isatty():
+            ui.info(t("worktree.hint_yes", task_id=task_id, path=wt.path))
+            return
+        if not ui.ask_yes_no(t("worktree.remove", task_id=task_id, path=wt.path), default=False):
+            return
+    if not worktree.remove(wt, root):
         ui.warn(t("worktree.remove_failed", path=wt.path))
+        return
+    log.append({"kind": "worktree-removed", "task_id": task_id})
+    ui.ok(t("worktree.removed", task_id=task_id))
+    if worktree.delete_branch(wt, root):
+        ui.ok(t("worktree.branch_deleted", branch=wt.branch))
 
 
 def dispatch_task(args) -> int:
@@ -90,7 +102,7 @@ def dispatch_task(args) -> int:
     if command == "done":
         if store.close_task(args.task_id):
             print(f"{args.task_id} closed")
-            _offer_worktree_removal(args.task_id)
+            _offer_worktree_removal(args.task_id, assume_yes=args.yes)
             return 0
         print(f"task not found: {args.task_id}")
         return 1

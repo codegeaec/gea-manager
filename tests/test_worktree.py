@@ -115,15 +115,44 @@ def test_a_worktree_is_removed_when_the_agent_fails_to_start(repo, fake_herdr, m
     assert not any((paths.gea_home() / "worktrees" / repo.name).iterdir())
 
 
-def test_task_done_offers_to_remove_only_a_logged_worktree(repo, fake_herdr, monkeypatch):
-    from gea.tasks import commands
-
+def _task_done_setup(repo, fake_herdr, monkeypatch, merged=True):
     _delegate(repo, monkeypatch)
     delegate.delegate_task("TASK-001", use_worktree=True)
-    monkeypatch.setattr(ui, "ask_yes_no", lambda *a, **k: True)
-    commands._offer_worktree_removal("TASK-001")
+    monkeypatch.setattr(worktree, "branch_merged", lambda wt, root: merged)
+    monkeypatch.setattr(worktree, "delete_branch", lambda wt, root: True)
+
+
+def _boom(*a, **k):
+    raise AssertionError("must not prompt")
+
+
+def test_task_done_yes_removes_a_merged_worktree_without_asking(repo, fake_herdr, monkeypatch):
+    from gea.tasks import commands
+
+    _task_done_setup(repo, fake_herdr, monkeypatch)
+    monkeypatch.setattr(ui, "ask_yes_no", _boom)
+    commands._offer_worktree_removal("TASK-001", assume_yes=True)
     assert worktree.lookup("TASK-001") is None  # marked removed in the log
-    commands._offer_worktree_removal("TASK-404")  # unknown task: no prompt, no error
+    commands._offer_worktree_removal("TASK-404", assume_yes=True)  # unknown task: no error
+
+
+def test_task_done_never_reads_stdin_when_not_a_terminal(repo, fake_herdr, monkeypatch):
+    from gea.tasks import commands
+
+    _task_done_setup(repo, fake_herdr, monkeypatch)
+    monkeypatch.setattr(ui, "ask_yes_no", _boom)
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False, raising=False)
+    commands._offer_worktree_removal("TASK-001")
+    assert worktree.lookup("TASK-001") is not None  # kept, with a hint
+
+
+def test_task_done_keeps_an_unmerged_worktree(repo, fake_herdr, monkeypatch):
+    from gea.tasks import commands
+
+    _task_done_setup(repo, fake_herdr, monkeypatch, merged=False)
+    monkeypatch.setattr(ui, "ask_yes_no", _boom)
+    commands._offer_worktree_removal("TASK-001", assume_yes=True)
+    assert worktree.lookup("TASK-001") is not None
 
 
 def test_review_pack_reads_the_diff_from_the_worktree(repo, fake_herdr, monkeypatch):
