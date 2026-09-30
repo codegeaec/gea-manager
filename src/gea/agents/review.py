@@ -10,7 +10,7 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-from gea import review_pack, ui
+from gea import config, review_pack, ui
 from gea.agents import herdr, log, profiles
 from gea.i18n import t
 from gea.tasks import budget, store
@@ -74,6 +74,11 @@ def review_task(task_id: str, agent_id: str | None = None) -> int:
         }
     )
     if result == "done":
+        cfg = config.load_project(root)
+        if cfg.get("builders", {}).get("close", config.DEFAULT_CLOSE) == "on-success" and (
+            herdr.created_by_gea(status)
+        ):
+            herdr.close_agent_pane(herdr.pane_name_for(root, "builder", reviewer.id))
         ui.ok(t("review.done", path=task_path))
         return 0
     ui.err(t("review.failed", result=result))

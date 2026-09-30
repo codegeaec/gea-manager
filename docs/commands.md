@@ -170,3 +170,14 @@ no duplicate `.agents` files, builder selection, `gea task import`.
 `gea guide [plan|delegate|review|build|all] [--lang]` prints the working guide;
 `.agents/gea.md` is the command cheat sheet; `/gea-*` slash commands for
 Claude Code and OpenCode. `gea agents refresh` detects builder profiles.
+
+# Builder panes
+
+After a verified `gea delegate` (and after `gea review`), gea closes the pane
+it opened for the builder, so panes stop piling up task after task
+(`herdr pane close`, via `herdr.close_agent_pane`). `builders.close` in
+`gea.json`: `"on-success"` (default) or `"never"`. Failed, unverified, blocked
+or timed-out runs stay open to inspect; a pane the user opened themselves
+("reused existing pane as …") and the caller's own pane are never closed.
+A correction round after a close starts a fresh session; use `"never"` to keep
+the builder's session across rounds.

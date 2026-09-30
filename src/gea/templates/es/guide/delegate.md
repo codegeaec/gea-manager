@@ -15,7 +15,11 @@ Gastá tus tokens en el plan y la revisión, no en escribir código.
    que imprimió `gea delegate`: `<3 letras del proyecto>-builder-<id>`) y decile al usuario qué aprobar.
 5. Timeout o cupo agotado: `gea agents check <id>` y elegí otro agente. Una
    corrida mala: `gea undo <ID>` restaura el checkpoint.
-6. Mismos hallazgos tras dos rondas de corrección → cambiá de agente.
+6. Mismos hallazgos tras dos rondas de corrección → cambiá de agente. Tras una
+   corrida verificada gea cierra el pane del builder (`builders.close` en
+   gea.json: `on-success`, el defecto, o `never`); las corridas fallidas quedan
+   abiertas. Una ronda de corrección arranca entonces sesión nueva — el archivo
+   de la task lleva el contexto.
 7. Sin agentes disponibles → implementalo vos y anotalo en *Deviations*.
 
 Siguiente: `gea guide review`.

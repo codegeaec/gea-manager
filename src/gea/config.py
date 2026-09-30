@@ -17,6 +17,12 @@ from gea import dryrun, paths
 # instead of being silently misread (or clobbered on the next save).
 SCHEMA_VERSION = 1
 
+# `builders.close`: what happens to a builder's herdr pane when it finishes.
+# "on-success" closes it if the run was done and verified; failures stay open
+# to inspect. "never" keeps every pane (and the builder's session).
+CLOSE_POLICIES = ("on-success", "never")
+DEFAULT_CLOSE = "on-success"
+
 AUTONOMY_LEVELS = ("supervised", "balanced", "autonomous")
 DEFAULT_AUTONOMY = "balanced"
 
@@ -65,6 +71,9 @@ def validate(data: dict[str, Any], path: Path) -> None:
     autonomy = data.get("autonomy", DEFAULT_AUTONOMY)
     if autonomy not in AUTONOMY_LEVELS:
         raise ConfigError(f"{path}: autonomy must be one of {', '.join(AUTONOMY_LEVELS)}")
+    close = data.get("builders", {}).get("close", DEFAULT_CLOSE)
+    if close not in CLOSE_POLICIES:
+        raise ConfigError(f"{path}: builders.close must be one of {', '.join(CLOSE_POLICIES)}")
     _validate_tabs(data, path)
 
 

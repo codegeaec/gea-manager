@@ -15,7 +15,10 @@ Spend your tokens on the plan and the review, not on writing code.
    `gea delegate` printed: `<3 letters of the project>-builder-<id>`), then tell the user what to approve.
 5. Timeout or exhausted quota: `gea agents check <id>`, then pick another
    agent. A bad run: `gea undo <ID>` restores the checkpoint.
-6. Same findings after two correction rounds → switch agent.
+6. Same findings after two correction rounds → switch agent. After a verified
+   run gea closes the builder pane (`builders.close` in gea.json: `on-success`,
+   the default, or `never`); failed runs stay open. A correction round then
+   starts a fresh session — the task file carries the context.
 7. No agent available → implement it yourself and note it in *Deviations*.
 
 Next: `gea guide review`.

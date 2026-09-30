@@ -59,6 +59,19 @@ def _print_summary(task_id, agent_id, started, task_path, stray, verify_ok, wt) 
         print(t("delegate.worktree", branch=wt.branch, path=wt.path))
 
 
+def close_finished_pane(cfg: dict, pane_name: str, status: str, verify_ok: bool) -> bool:
+    """Close the builder's pane after a verified run (`builders.close`), so panes
+    don't pile up task after task. Failed or unverified runs stay open to inspect,
+    and a pane the user opened themselves is never closed."""
+    policy = cfg.get("builders", {}).get("close", config.DEFAULT_CLOSE)
+    if policy != "on-success" or not verify_ok or not herdr.created_by_gea(status):
+        return False
+    closed = herdr.close_agent_pane(pane_name)
+    if closed:
+        ui.info(t("delegate.closed", pane=pane_name))
+    return closed
+
+
 def delegate_task(
     task_id: str, agent_id: str | None = None, use_worktree: bool | None = None
 ) -> int:
@@ -165,4 +178,5 @@ def delegate_task(
         worktree.commit_all(wt, f"wip({task_id}): builder output")
     record("done", stray, verify_ok)
     _print_summary(task_id, agent.id, started, task_path, stray, verify_ok, wt)
+    close_finished_pane(cfg, pane_name, status, verify_ok)
     return 0

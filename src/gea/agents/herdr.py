@@ -245,3 +245,21 @@ def clear_session(pane_name: str, cli: str) -> bool:
     _out, code, _error = prompt_result(pane_name, command, wait=False)
     time.sleep(1)  # let the command land before the real prompt is sent
     return code == 0
+
+
+def close_agent_pane(name: str) -> bool:
+    """Close the pane hosting agent `name`. Never the caller's own pane."""
+    if os.environ.get("HERDR_ENV") != "1":
+        return False
+    info, _err = herdr_json(["agent", "get", name])
+    pane_id = (info.get("agent") or {}).get("pane_id")
+    if not pane_id or pane_id == os.environ.get("HERDR_PANE_ID"):
+        return False
+    _result, err = herdr_json(["pane", "close", pane_id])
+    return err is None
+
+
+def created_by_gea(status: str) -> bool:
+    """Did `start_agent_pane` make (or find) a pane gea owns, as opposed to
+    adopting a pane the user opened themselves ('reused existing pane as ...')?"""
+    return status.startswith("started") or "already exists" in status

@@ -117,5 +117,6 @@
   "import.none": "no hay tasks en un layout conocido (tasks/active|completed, tasks/, docs/tasks)",
   "import.remove_refused": "--remove-source exige que cada archivo importado esté en git y sin cambios — no se quitó nada",
   "import.remove_confirm": "¿git rm de los {count} archivo(s) originales de tasks?",
-  "init.offer_import": "¿Importarlas ahora a la estructura de tasks de gea?"
+  "init.offer_import": "¿Importarlas ahora a la estructura de tasks de gea?",
+  "delegate.closed": "{pane}: pane cerrado (builders.close = \"on-success\"; pon \"never\" en gea.json para conservarlo)"
 }

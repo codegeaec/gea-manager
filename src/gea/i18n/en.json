@@ -117,5 +117,6 @@
   "import.none": "no tasks in a known layout found (tasks/active|completed, tasks/, docs/tasks)",
   "import.remove_refused": "--remove-source needs every imported file tracked by git and unmodified — nothing removed",
   "import.remove_confirm": "git rm the {count} original task file(s)?",
-  "init.offer_import": "Import them into gea's task structure now?"
+  "init.offer_import": "Import them into gea's task structure now?",
+  "delegate.closed": "{pane}: pane closed (builders.close = \"on-success\"; set \"never\" in gea.json to keep it)"
 }
