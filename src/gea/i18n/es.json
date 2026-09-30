@@ -108,5 +108,6 @@
   "init.report_equivalent": "no se crea {generated}: {existing} ya lo cubre",
   "init.report_tasks": "tasks en otro formato: {layout} — `gea task import` puede convertirlas",
   "init.warn_oversized": "AGENTS.md pesa ~{tokens} tokens; el lint del pre-commit falla sobre ~2000 — mové el detalle a .agents/",
-  "init.warn_shadcn_mcp": "servidor MCP de shadcn en {location}: gea usa el CLI de shadcn"
+  "init.warn_shadcn_mcp": "servidor MCP de shadcn en {location}: gea usa el CLI de shadcn",
+  "init.warn_missing_tools": "faltan herramientas: {tools} — corré `gea setup` primero"
 }

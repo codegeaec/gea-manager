@@ -62,3 +62,28 @@ def test_interactive_questions_default_to_the_previous_answer(monkeypatch):
     monkeypatch.setattr(wizard.ui, "ask_choice", choice)
     assert wizard._pick_langs() == ("en", "en", "en")
     assert [d for _q, d in asked] == [0, 1, 1]
+
+
+def test_ask_multi_parses_numbers_and_defaults(monkeypatch):
+    from gea import ui
+
+    answers = iter(["", "2", "1, 3", "9", "x"])
+    monkeypatch.setattr("builtins.input", lambda _="": next(answers))
+    opts = ["a", "b", "c"]
+    assert ui.ask_multi("q", opts) == [0, 1, 2]
+    assert ui.ask_multi("q", opts) == [1]
+    assert ui.ask_multi("q", opts) == [0, 2]
+    assert ui.ask_multi("q", opts) == [0, 1, 2]  # out of range -> default
+    assert ui.ask_multi("q", opts, default_all=False) == []  # not a number -> default
+    assert ui.ask_multi("q", opts, assume_yes=True) == [0, 1, 2]
+
+
+def test_project_builders_are_the_ones_the_user_picked(monkeypatch):
+    from gea.agents.profiles import AgentProfile
+
+    profs = [AgentProfile("a", "a", None, "pa", 1), AgentProfile("b", "b", "m", "pb", 2)]
+    monkeypatch.setattr(wizard.ui, "ask_multi", lambda *a, **k: [1])
+    assert wizard._pick_builders(profs) == ["b"]
+    monkeypatch.setattr(wizard.ui, "ask_multi", lambda *a, **k: [])
+    assert wizard._pick_builders(profs) == ["a", "b"]  # never end up with nobody
+    assert wizard._pick_builders([]) == []

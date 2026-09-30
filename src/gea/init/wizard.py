@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from gea import config, dryrun, platform, proc, secrets, ui
+from gea import config, doctor, dryrun, platform, proc, secrets, ui
 from gea.agents.profiles import load_profiles, refresh_and_save
 from gea.i18n import t
 from gea.init import detect, report, scaffold
@@ -101,6 +101,25 @@ def _pick_autonomy(assume_yes: bool = False) -> str:
     return levels[choice]
 
 
+def _pick_builders(all_profiles, assume_yes: bool = False) -> list[str]:
+    """Which detected builder agents this project may delegate to."""
+    if not all_profiles:
+        return []
+    labels = [f"{p.id} ({p.cli}{' ' + p.model if p.model else ''})" for p in all_profiles]
+    picked = ui.ask_multi(
+        "Builder agents this project may use (comma-separated, empty = all)",
+        labels,
+        assume_yes=assume_yes,
+    )
+    return [all_profiles[i].id for i in picked] or [p.id for p in all_profiles]
+
+
+def _warn_missing_tools() -> None:
+    result = doctor.run_doctor()
+    if result.missing_required:
+        ui.warn(t("init.warn_missing_tools", tools=", ".join(result.missing_required)))
+
+
 def run_init(
     dry_run: bool = False,
     assume_yes: bool = False,
@@ -119,6 +138,7 @@ def run_init(
             ui.err("gea init needs a git repository")
             return 1
 
+    _warn_missing_tools()
     state = inspect_mod.inspect(repo_root)
     report.print_report(state)
 
@@ -145,8 +165,7 @@ def run_init(
         if not ui.ask_yes_no("Use these?", default=True, assume_yes=assume_yes):
             verify_commands = []
 
-    all_profiles = load_profiles() or refresh_and_save()
-    allow = [p.id for p in all_profiles] if all_profiles else []
+    allow = _pick_builders(load_profiles() or refresh_and_save(), assume_yes)
 
     cfg = config.DEFAULT_PROJECT_CONFIG.copy()
     cfg.update(

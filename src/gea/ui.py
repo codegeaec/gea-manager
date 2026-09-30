@@ -68,3 +68,25 @@ def ask_choice(
     except ValueError:
         pass
     return default_index
+
+
+def ask_multi(
+    question: str, options: list[str], default_all: bool = True, assume_yes: bool = False
+) -> list[int]:
+    """Pick any number of options: comma-separated numbers, empty = the
+    default (all of them, or none). Invalid input falls back to the default."""
+    everything = list(range(len(options)))
+    default = everything if default_all else []
+    if assume_yes:
+        return default
+    print(question)
+    for i, option in enumerate(options):
+        print(f"  {i + 1}) {option}")
+    raw = input(f"> [{'all' if default_all else 'none'}] ").strip()
+    if not raw:
+        return default
+    try:
+        picked = sorted({int(part) - 1 for part in raw.split(",") if part.strip()})
+    except ValueError:
+        return default
+    return picked if all(0 <= i < len(options) for i in picked) else default

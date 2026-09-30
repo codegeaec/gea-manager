@@ -108,5 +108,6 @@
   "init.report_equivalent": "{generated} not created: {existing} already covers it",
   "init.report_tasks": "tasks in another format: {layout} — `gea task import` can convert them",
   "init.warn_oversized": "AGENTS.md is ~{tokens} tokens; the pre-commit lint fails above ~2000 — move detail into .agents/",
-  "init.warn_shadcn_mcp": "shadcn MCP server in {location}: gea uses the shadcn CLI instead"
+  "init.warn_shadcn_mcp": "shadcn MCP server in {location}: gea uses the shadcn CLI instead",
+  "init.warn_missing_tools": "missing tools: {tools} — run `gea setup` first"
 }
