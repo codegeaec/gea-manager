@@ -9,7 +9,7 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-from gea import autonomy, checkpoint, config, ui, verify
+from gea import autonomy, checkpoint, config, proc, ui, verify
 from gea.agents import exhaustion, herdr, log, profiles, worktree
 from gea.i18n import t
 from gea.tasks import budget as budget_mod
@@ -25,12 +25,38 @@ BUILDER_PROMPT_TEMPLATE = (
     "Task: {task_path}\n"
     "Autonomy: {autonomy_line}"
 )
+WORKTREE_PROMPT_LINE = (
+    "\nWorkdir: {workdir} — your own git worktree. Create and edit files ONLY under it, "
+    "with paths relative to it; never touch the main checkout ({root}) even if a path in "
+    "the task or docs points there. The task file itself is the one exception."
+)
 
 
 def _changed(task_id: str, wt: worktree.Worktree | None) -> list[str]:
     if wt:
         return worktree.changed_files(wt)
     return checkpoint.changed_files(task_id) or []
+
+
+def _dirty(root: Path) -> set[str]:
+    out, _err, _code = proc.run(["git", "-C", str(root), "status", "--porcelain"])
+    return {line[3:] for line in out.splitlines()}
+
+
+def _check_main_untouched(task_path: Path, root: Path, before: set[str]) -> list[str]:
+    """A worktree builder must write only inside its worktree. Some CLIs
+    (opencode) edit the main checkout through absolute paths they saw in the
+    task file; report it — never auto-revert, the files may be wanted."""
+    leaked = sorted(f for f in _dirty(root) - before if not f.startswith(".gea/"))
+    if leaked:
+        ui.warn(t("delegate.main_touched", count=len(leaked), files=", ".join(leaked)))
+        store.append_to_section(
+            task_path,
+            "Review",
+            "important: builder wrote in the main checkout instead of its worktree:\n"
+            + "\n".join(f"- `{f}`" for f in leaked),
+        )
+    return leaked
 
 
 def _check_scope(task_id: str, task_path: Path, wt: worktree.Worktree | None) -> list[str]:
@@ -170,6 +196,9 @@ def delegate_task(
         task_path=task_path,
         autonomy_line=autonomy.describe(cfg.get("autonomy"), config.agents_lang(cfg)),
     )
+    if wt:
+        prompt += WORKTREE_PROMPT_LINE.format(workdir=wt.path, root=root)
+    main_before = _dirty(root) if wt else set()
     def out_of_quota() -> bool:
         retry = f"gea delegate {task_id} --agent {{agent}}"
         return exhaustion.check_exhausted(pane_name, agent, root, status, retry, tier)
@@ -199,6 +228,8 @@ def delegate_task(
         record("exhausted" if out_of_quota() else blocked)
         return 1
     stray = _check_scope(task_id, task_path, wt)
+    if wt:
+        _check_main_untouched(task_path, root, main_before)
     if not _changed(task_id, wt):
         if out_of_quota():  # a builder stuck on a quota message also "finishes" empty
             record("exhausted", stray, None)

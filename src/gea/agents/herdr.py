@@ -211,7 +211,11 @@ CODEX_NO_DAEMON = "--no-daemon"
 # Builders get these flags unless `builders.agentArgs[<cli>]` says otherwise (an
 # empty list opts out). Codex's shared app-server degrades after a run and then
 # rejects new clients, so each builder runs isolated from it.
-DEFAULT_AGENT_ARGS: dict[str, list[str]] = {"codex": [CODEX_NO_DAEMON]}
+# `check_for_update_on_startup=false`: codex's startup self-update prompt/restart
+# would stall or kill an unattended builder.
+DEFAULT_AGENT_ARGS: dict[str, list[str]] = {
+    "codex": [CODEX_NO_DAEMON, "-c", "check_for_update_on_startup=false"],
+}
 CODEX_DAEMON_ERROR = "shared background server"
 STARTUP_WAIT_S = 10
 

@@ -170,3 +170,15 @@ def test_review_pack_reads_the_diff_from_the_worktree(repo, fake_herdr, monkeypa
     (wt.path / "a.py").write_text("built in the worktree\n")
     pack = review_pack.build("TASK-001", repo)
     assert "+built in the worktree" in pack and "### a.py" in pack
+
+
+def test_files_written_in_the_main_checkout_are_reported_not_reverted(repo, monkeypatch):
+    from gea.tasks import store
+
+    path = store.create_task("Leak", repo_root=repo)
+    before = delegate._dirty(repo)
+    (repo / "leak.py").write_text("x\n")  # what a builder that ignored its worktree leaves
+    leaked = delegate._check_main_untouched(path, repo, before)
+    assert leaked == ["leak.py"] and (repo / "leak.py").exists()
+    assert "leak.py" in path.read_text()
+    assert delegate._check_main_untouched(path, repo, before | {"leak.py"}) == []
