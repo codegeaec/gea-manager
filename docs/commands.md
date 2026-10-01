@@ -243,3 +243,7 @@ gea.json; `{"codex": []}` opts out.
 - `gea undo` refuses to `reset --hard` when HEAD moved since the checkpoint
   (commits or merges would be lost); `--force` overrides. `gea task done`
   reports loudly if HEAD changed while it ran.
+- If a builder's CLI dies mid-run (SIGILL, SIGSEGV…: herdr no longer sees a
+  live agent in the pane), `gea delegate` prints the pane's last lines, closes
+  the pane, removes the worktree and branch, logs the run as `crashed` (shown
+  by `gea status`) and suggests `--agent <another pool>`.

@@ -205,6 +205,29 @@ def delegate_task(
         retry = f"gea delegate {task_id} --agent {{agent}}"
         return exhaustion.check_exhausted(pane_name, agent, root, status, retry, tier)
 
+    def crashed() -> bool:
+        """The builder's CLI died mid-run (SIGILL, SIGSEGV, ...): show what its pane
+        says, leave nothing behind and suggest another agent."""
+        nonlocal wt
+        if herdr.agent_alive(pane_name):
+            return False
+        tail = herdr.read_pane(pane_name, lines=15).strip()
+        ui.err(t("delegate.crashed", task_id=task_id, agent=agent.id))
+        if tail:
+            print(tail)
+        if herdr.created_by_gea(status):
+            herdr.close_agent_pane(pane_name)
+        if wt:  # a retry starts from a clean slate
+            worktree.remove(wt, root, force=True)
+            worktree.delete_branch(wt, root, force=True)
+        record("crashed")
+        wt = None
+        nxt = profiles.pick_agent(exclude_pools=[agent.pool], repo_root=root, tier=tier)
+        if nxt:
+            retry = f"gea delegate {task_id} --agent {nxt.id}"
+            ui.info(t("exhausted.next", agent=nxt.id, cmd=retry))
+        return True
+
     budget = budget_mod.seconds_for(task_path, root)
     prompted = time.monotonic()
     out, code, error = herdr.prompt_result(pane_name, prompt, wait=True, budget_s=budget)
@@ -222,12 +245,18 @@ def delegate_task(
             f"last output:\n\n```\n{tail.strip()}\n```",
         )
         ui.warn(t("delegate.budget", minutes=budget // 60))
+        if crashed():
+            return 1
         record("exhausted" if out_of_quota() else "timeout")
         return 1
     if code != 0:
+        if out_of_quota():
+            record("exhausted")
+            return 1
+        if crashed():
+            return 1
         print("\n".join(out.strip().splitlines()[-5:]))
-        blocked = "blocked" if error == "agent_blocked" else "error"
-        record("exhausted" if out_of_quota() else blocked)
+        record("blocked" if error == "agent_blocked" else "error")
         return 1
     stray = _check_scope(task_id, task_path, wt)
     if wt:

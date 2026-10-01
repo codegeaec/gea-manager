@@ -153,3 +153,14 @@ def test_clear_session_only_for_known_clis(monkeypatch):
     monkeypatch.setattr(herdr.time, "sleep", lambda s: None)
     assert herdr.clear_session("p", "claude") is True and sent == ["/clear"]
     assert herdr.clear_session("p", "kimi") is False and sent == ["/clear"]
+
+
+def test_delegate_reports_a_crashed_builder_and_cleans_up(tmp_path, monkeypatch):
+    from gea.agents import log
+
+    closed = []
+    monkeypatch.setattr(delegate.herdr, "agent_alive", lambda name: False)
+    monkeypatch.setattr(delegate.herdr, "close_agent_pane", lambda n: closed.append(n) or True)
+    code = _delegate_with_fakes(tmp_path, monkeypatch, "started builder-codex", ("", 1, "unknown"))
+    assert code == 1 and closed
+    assert log.last_for_task("TASK-001")["result"] == "crashed"

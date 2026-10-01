@@ -264,6 +264,17 @@ def _agent_up(pane_name: str) -> bool:
         time.sleep(1)
 
 
+def agent_alive(pane_name: str) -> bool:
+    """False when herdr no longer sees a live agent in the pane (the CLI exited
+    or was killed by a signal and the pane fell back to a shell). True when it
+    cannot tell (outside herdr)."""
+    if os.environ.get("HERDR_ENV") != "1":
+        return True
+    info, err = herdr_json(["agent", "get", pane_name])
+    agent = info.get("agent") or {}
+    return err is None and bool(agent.get("agent")) and agent.get("agent_status") != "unknown"
+
+
 def read_pane_id(pane_id: str, lines: int = 15) -> str:
     out, _err, _code = proc.run(["herdr", "pane", "read", pane_id, "--lines", str(lines)])
     return out
