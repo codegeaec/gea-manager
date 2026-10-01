@@ -102,3 +102,13 @@ def test_wait_settled_times_out_when_still_working(monkeypatch):
         herdr, "herdr_json", lambda cmd, timeout=15: ({"agent": {"agent_status": "working"}}, None)
     )
     assert herdr.wait_settled("x", 0) == "timeout"
+
+
+def test_codex_self_update_exit_is_relaunched_once_with_the_same_args(monkeypatch, tmp_path):
+    calls = _fake_start(
+        monkeypatch, tmp_path, False, "Update ran successfully! Please restart Codex."
+    )
+    status = herdr.start_agent_pane("cot-builder-codex", "codex", None, tmp_path)
+    starts = [c for c in calls if c[:2] == ["agent", "start"]]
+    assert len(starts) == 2 and starts[0] == starts[1]  # relaunched once, no loop
+    assert status.startswith("FAILED") and "Please restart Codex" in status

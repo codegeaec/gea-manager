@@ -7,6 +7,7 @@ log, and makes sure it only ever removes worktrees it created itself.
 
 from __future__ import annotations
 
+import json
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -98,6 +99,22 @@ def remove(wt: Worktree, repo_root: Path, force: bool = False) -> bool:
     args = ["worktree", "remove", str(wt.path)] + (["--force"] if force else [])
     _out, code = _git(repo_root, *args)
     return code == 0
+
+
+def confine_opencode(wt: Worktree, allow: list[Path]) -> bool:
+    """Deny opencode's writes outside its worktree (`permission.external_directory`),
+    except `allow` (the task files). Skipped when the checkout already has its own
+    opencode.jsonc. The file is gea's: it is never committed (tracked in `wt.copied`)."""
+    config = wt.path / "opencode.jsonc"
+    if config.exists():
+        return False
+    rules = {"*": "deny", **{f"{d}/**": "allow" for d in allow}}
+    config.write_text(
+        json.dumps({"permission": {"external_directory": rules}}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    wt.copied.append(config.name)
+    return True
 
 
 def branch_merged(wt: Worktree, repo_root: Path) -> bool:

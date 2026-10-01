@@ -194,8 +194,9 @@ def start_agent_pane(
 
     args = cli_cfg_args(cli, model, extra_args)
     state, info = _run_start(pane_name, cli, pane_id, args)
-    if state == "dead" and _needs_no_daemon(cli, info, args):
-        state, info = _run_start(pane_name, cli, pane_id, args + [CODEX_NO_DAEMON])
+    retry = _relaunch_args(cli, info, args) if state == "dead" else None
+    if retry is not None:
+        state, info = _run_start(pane_name, cli, pane_id, retry)
     if state == "blocked":
         return f"BLOCKED {pane_name} — started but is waiting on a confirmation dialog"
     if state == "dead":
@@ -233,10 +234,21 @@ def cli_cfg_args(cli: str, model: str | None, extra_args: list[str] | None) -> l
     return args
 
 
-def _needs_no_daemon(cli: str, tail: str, args: list[str]) -> bool:
-    """Codex's shared app-server can be stuck and reject new clients; its own
-    advice is to rerun with --no-daemon, which isolates this builder."""
-    return cli == "codex" and CODEX_DAEMON_ERROR in tail and CODEX_NO_DAEMON not in args
+CODEX_RESTART_MARKERS = ("Please restart Codex", "Update ran successfully")
+
+
+def _relaunch_args(cli: str, tail: str, args: list[str]) -> list[str] | None:
+    """Args for the one relaunch of a CLI that died on startup, or None.
+    Codex self-updates and exits asking to be restarted: same command again.
+    Its shared app-server can be stuck and reject new clients: rerun with
+    --no-daemon (its own advice), which isolates this builder."""
+    if cli != "codex":
+        return None
+    if any(m in tail for m in CODEX_RESTART_MARKERS):
+        return args
+    if CODEX_DAEMON_ERROR in tail and CODEX_NO_DAEMON not in args:
+        return args + [CODEX_NO_DAEMON]
+    return None
 
 
 def _agent_up(pane_name: str) -> bool:

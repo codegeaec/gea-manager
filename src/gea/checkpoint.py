@@ -75,8 +75,21 @@ def changed_files(task_id: str, repo_root: Path | None = None) -> list[str] | No
     return sorted(changed)
 
 
-def restore(task_id: str, repo_root: Path | None = None) -> bool:
+def moved_past(task_id: str, repo_root: Path | None = None) -> bool:
+    """True when HEAD is no longer the checkpoint's: restoring would `reset
+    --hard` it back and drop every commit made since (a merge, a fast-forward)."""
     root = repo_root or Path.cwd()
+    head, h_code = _git(root, "rev-parse", "--verify", HEAD_REF.format(task_id=task_id))
+    now, n_code = _git(root, "rev-parse", "HEAD")
+    return h_code == 0 and n_code == 0 and head != now
+
+
+def restore(task_id: str, repo_root: Path | None = None, force: bool = False) -> bool:
+    """Back to the checkpoint. Refuses (False) when HEAD moved since it was
+    taken, unless `force`: gea must never move HEAD backwards on its own."""
+    root = repo_root or Path.cwd()
+    if not force and moved_past(task_id, root):
+        return False
     snapshot, s_code = _git(root, "rev-parse", "--verify", SNAPSHOT_REF.format(task_id=task_id))
     head, h_code = _git(root, "rev-parse", "--verify", HEAD_REF.format(task_id=task_id))
     if s_code != 0 or h_code != 0:
@@ -95,7 +108,7 @@ def restore(task_id: str, repo_root: Path | None = None) -> bool:
     return True
 
 
-def run_undo(task_id: str, assume_yes: bool = False) -> int:
+def run_undo(task_id: str, assume_yes: bool = False, force: bool = False) -> int:
     root = Path.cwd()
     _, code = _git(root, "rev-parse", "--verify", HEAD_REF.format(task_id=task_id))
     if code != 0:
@@ -107,7 +120,10 @@ def run_undo(task_id: str, assume_yes: bool = False) -> int:
     if not ui.ask_yes_no(t("undo.confirm"), default=False, assume_yes=assume_yes):
         ui.warn(t("common.aborted"))
         return 1
-    if not restore(task_id, root):
+    if moved_past(task_id, root) and not force:
+        ui.err(t("undo.head_moved", task_id=task_id))
+        return 1
+    if not restore(task_id, root, force=True):
         ui.err(t("undo.failed"))
         return 1
     ui.ok(t("undo.done", task_id=task_id))

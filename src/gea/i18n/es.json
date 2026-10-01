@@ -160,5 +160,7 @@
   "worktree.branch_deleted": "rama {branch} borrada",
   "delegate.start_failed": "{task_id} sigue en planned y no quedó nada huérfano (worktree, rama, panel). Arregla el CLI del agente (login, cuota, daemon) o reintenta con `gea delegate {task_id} --agent <otro>` — es un fallo de arranque, no un builder que terminó sin cambios.",
   "delegate.no_changes": "{task_id}: {agent} terminó pero no cambió nada — no se corrió verify (pasaría en vacío). Revisa el pane, o reintenta / usa --agent <otro>.",
-  "delegate.main_touched": "el builder escribió {count} archivo(s) en el checkout principal en vez de su worktree: {files}"
+  "delegate.main_touched": "el builder escribió {count} archivo(s) en el checkout principal en vez de su worktree: {files}",
+  "task.head_moved": "HEAD pasó de {before} a {after} mientras se cerraba la task — gea no mueve HEAD; revisa `git reflog` (otro proceso pudo resetear la rama) y `git merge-base --is-ancestor <sha> HEAD` con lo que integraste",
+  "undo.head_moved": "HEAD avanzó desde el checkpoint de {task_id} (se hicieron o integraron commits); undo los borraría con un reset. Revisa `git log`, o usa --force para resetear igual."
 }

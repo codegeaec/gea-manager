@@ -9,7 +9,7 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-from gea import autonomy, checkpoint, config, proc, ui, verify
+from gea import autonomy, checkpoint, config, paths, proc, ui, verify
 from gea.agents import exhaustion, herdr, log, profiles, worktree
 from gea.i18n import t
 from gea.tasks import budget as budget_mod
@@ -168,6 +168,8 @@ def delegate_task(
         if wt
         else herdr.pane_name_for(root, "builder", agent.id)
     )
+    if wt and agent.cli == "opencode" and builders.get("confine", True):
+        worktree.confine_opencode(wt, [store.tasks_dir(root), paths.gea_home()])
     status = herdr.start_agent_pane(
         pane_name,
         agent.cli,

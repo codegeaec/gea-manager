@@ -231,3 +231,15 @@ shared background server" is avoided up front: codex builders always start with
 `--no-daemon` (isolated from the shared app-server), and a failure is still
 retried once with it. Override the per-CLI flags with `builders.agentArgs` in
 gea.json; `{"codex": []}` opts out.
+
+### Safety nets for worktree builders
+
+- opencode builders in a worktree get an untracked `opencode.jsonc` denying
+  writes outside it (`permission.external_directory`; the tasks dir and
+  `~/gea` stay allowed). Opt out with `builders.confine: false`; an existing
+  `opencode.jsonc` in the checkout is left alone.
+- Codex builders start with the self-update check off; if it still updates and
+  exits ("Please restart Codex") gea relaunches once.
+- `gea undo` refuses to `reset --hard` when HEAD moved since the checkpoint
+  (commits or merges would be lost); `--force` overrides. `gea task done`
+  reports loudly if HEAD changed while it ran.

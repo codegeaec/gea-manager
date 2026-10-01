@@ -142,14 +142,14 @@ def test_task_done_yes_removes_a_merged_worktree_without_asking(repo, fake_herdr
     commands._offer_worktree_removal("TASK-404", assume_yes=True)  # unknown task: no error
 
 
-def test_task_done_never_reads_stdin_when_not_a_terminal(repo, fake_herdr, monkeypatch):
+def test_task_done_removes_a_merged_worktree_without_a_terminal(repo, fake_herdr, monkeypatch):
     from gea.tasks import commands
 
     _task_done_setup(repo, fake_herdr, monkeypatch)
     monkeypatch.setattr(ui, "ask_yes_no", _boom)
     monkeypatch.setattr("sys.stdin.isatty", lambda: False, raising=False)
     commands._offer_worktree_removal("TASK-001")
-    assert worktree.lookup("TASK-001") is not None  # kept, with a hint
+    assert worktree.lookup("TASK-001") is None  # merged: removed, no stdin read
 
 
 def test_task_done_keeps_an_unmerged_worktree(repo, fake_herdr, monkeypatch):
@@ -182,3 +182,13 @@ def test_files_written_in_the_main_checkout_are_reported_not_reverted(repo, monk
     assert leaked == ["leak.py"] and (repo / "leak.py").exists()
     assert "leak.py" in path.read_text()
     assert delegate._check_main_untouched(path, repo, before | {"leak.py"}) == []
+
+
+def test_confine_opencode_denies_outside_writes_but_not_the_task_dir(tmp_path):
+    wt = worktree.Worktree("TASK-001", tmp_path, "gea/task-001", "abc")
+    assert worktree.confine_opencode(wt, [tmp_path / "tasks"])
+    rules = __import__("json").loads((tmp_path / "opencode.jsonc").read_text())
+    rules = rules["permission"]["external_directory"]
+    assert rules == {"*": "deny", f"{tmp_path / 'tasks'}/**": "allow"}
+    assert "opencode.jsonc" in wt.copied  # never committed as builder output
+    assert not worktree.confine_opencode(wt, [])  # an existing config is left alone

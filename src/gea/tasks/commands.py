@@ -24,7 +24,8 @@ def _read_issue(number: str) -> dict | None:
 
 def _offer_worktree_removal(task_id: str, assume_yes: bool = False) -> None:
     """A task closed with a live gea-created worktree: clean it up once its
-    branch is merged. Never blocks: without --yes it only asks on a terminal."""
+    branch is merged. Never blocks: it only asks on a terminal, and never without
+    one (a merged branch is safe to remove)."""
     import sys
     from pathlib import Path
 
@@ -39,10 +40,9 @@ def _offer_worktree_removal(task_id: str, assume_yes: bool = False) -> None:
     if not worktree.branch_merged(wt, root):
         ui.warn(t("worktree.not_merged", branch=wt.branch, path=wt.path))
         return
-    if not assume_yes:
-        if not sys.stdin.isatty():
-            ui.info(t("worktree.hint_yes", task_id=task_id, path=wt.path))
-            return
+    # A merged branch is safe to drop (`branch -d`, and a dirty worktree is not
+    # removed), so without a terminal there is nothing to ask: just do it.
+    if not assume_yes and sys.stdin.isatty():
         if not ui.ask_yes_no(t("worktree.remove", task_id=task_id, path=wt.path), default=False):
             return
     if not worktree.remove(wt, root):
@@ -52,6 +52,23 @@ def _offer_worktree_removal(task_id: str, assume_yes: bool = False) -> None:
     ui.ok(t("worktree.removed", task_id=task_id))
     if worktree.delete_branch(wt, root):
         ui.ok(t("worktree.branch_deleted", branch=wt.branch))
+
+
+def _head() -> str | None:
+    from gea import proc
+
+    out, _err, code = proc.run(["git", "rev-parse", "HEAD"])
+    return out.strip() if code == 0 else None
+
+
+def _warn_if_head_moved(before: str | None) -> None:
+    """Closing a task must never move HEAD. If it did (or something else did,
+    meanwhile), say so loudly: that is how a merged commit gets lost."""
+    after = _head()
+    if before and after and before != after:
+        from gea import ui
+
+        ui.err(t("task.head_moved", before=before[:9], after=after[:9]))
 
 
 def dispatch_task(args) -> int:
@@ -100,9 +117,11 @@ def dispatch_task(args) -> int:
         print(f"task not found: {args.task_id}")
         return 1
     if command == "done":
+        head_before = _head()
         if store.close_task(args.task_id):
             print(f"{args.task_id} closed")
             _offer_worktree_removal(args.task_id, assume_yes=args.yes)
+            _warn_if_head_moved(head_before)
             return 0
         print(f"task not found: {args.task_id}")
         return 1

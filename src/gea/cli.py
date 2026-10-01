@@ -119,6 +119,9 @@ def _build_parser() -> argparse.ArgumentParser:
     undo_parser = subparsers.add_parser("undo", help="restore the checkpoint taken before delegate")
     undo_parser.add_argument("task_id")
     undo_parser.add_argument("--yes", action="store_true", help="skip the confirmation")
+    undo_parser.add_argument(
+        "--force", action="store_true", help="reset even if HEAD moved since the checkpoint"
+    )
 
     agents_parser = subparsers.add_parser("agents", help="manage builder agents")
     agents_sub = agents_parser.add_subparsers(dest="agents_command")
@@ -285,7 +288,7 @@ def _main(argv: list[str] | None = None) -> int:
     if args.command == "undo":
         from gea.checkpoint import run_undo
 
-        return run_undo(args.task_id, assume_yes=args.yes)
+        return run_undo(args.task_id, assume_yes=args.yes, force=args.force)
 
     if args.command == "agents":
         from gea.agents.cli import dispatch_agents

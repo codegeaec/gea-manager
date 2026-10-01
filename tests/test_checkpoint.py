@@ -42,3 +42,16 @@ def test_undo_from_a_clean_tree(repo):
 
 def test_restore_without_checkpoint_returns_false(repo):
     assert checkpoint.restore("TASK-404", repo) is False
+
+
+def test_undo_refuses_to_reset_away_commits_made_since_the_checkpoint(repo):
+    import subprocess
+
+    checkpoint.create("TASK-001", repo)
+    (repo / "merged.txt").write_text("integrated work\n")
+    subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-qm", "merge"], check=True)
+    assert checkpoint.moved_past("TASK-001", repo)
+    assert checkpoint.restore("TASK-001", repo) is False  # HEAD must not go backwards
+    assert (repo / "merged.txt").exists()
+    assert checkpoint.restore("TASK-001", repo, force=True)  # only on explicit request
