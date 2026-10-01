@@ -125,7 +125,8 @@ def start_builder_pane(
     """Start (or reuse) this project's `<prefix>-builder-<agent_id>` pane. Returns
     a short human-readable status line, same convention as `gea agents start`."""
     return start_agent_pane(
-        pane_name_for(cwd, "builder", agent_id), cli, model, cwd, permission_args(cli, permissions)
+        pane_name_for(cwd, "builder", agent_id), cli, model, cwd,
+        permission_args(cli, permissions) + agent_args(cli, {}),
     )
 
 
@@ -207,8 +208,17 @@ def start_agent_pane(
 
 
 CODEX_NO_DAEMON = "--no-daemon"
+# Builders get these flags unless `builders.agentArgs[<cli>]` says otherwise (an
+# empty list opts out). Codex's shared app-server degrades after a run and then
+# rejects new clients, so each builder runs isolated from it.
+DEFAULT_AGENT_ARGS: dict[str, list[str]] = {"codex": [CODEX_NO_DAEMON]}
 CODEX_DAEMON_ERROR = "shared background server"
 STARTUP_WAIT_S = 10
+
+
+def agent_args(cli: str, builders: dict) -> list[str]:
+    """Extra builder flags for `cli`: `builders.agentArgs` or the defaults."""
+    return list(builders.get("agentArgs", {}).get(cli, DEFAULT_AGENT_ARGS.get(cli, [])))
 
 
 def cli_cfg_args(cli: str, model: str | None, extra_args: list[str] | None) -> list[str]:

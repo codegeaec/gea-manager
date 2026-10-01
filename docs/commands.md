@@ -227,6 +227,7 @@ After `agent start`, gea verifies that herdr sees a live agent (non-empty
 kind, status other than `unknown`). If the CLI died on launch, the pane's last
 lines are printed, the pane is closed, and `gea delegate` leaves no worktree,
 branch or pane behind (the task stays `planned`). Codex's "Cannot use the
-shared background server" is retried once with `--no-daemon`; extra flags per
-CLI can be set with `builders.agentArgs` in gea.json, e.g.
-`{"builders": {"agentArgs": {"codex": ["--no-daemon"]}}}`.
+shared background server" is avoided up front: codex builders always start with
+`--no-daemon` (isolated from the shared app-server), and a failure is still
+retried once with it. Override the per-CLI flags with `builders.agentArgs` in
+gea.json; `{"codex": []}` opts out.

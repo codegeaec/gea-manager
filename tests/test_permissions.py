@@ -43,7 +43,7 @@ def test_agent_start_receives_the_extra_flags_before_the_model(monkeypatch, tmp_
     monkeypatch.setattr(herdr, "herdr_json", fake)
     herdr.start_builder_pane("cx", "codex", "gpt", tmp_path, permissions="yolo")
     tail = started[0][started[0].index("--") + 1 :]
-    assert tail == ["--dangerously-bypass-approvals-and-sandbox", "-m", "gpt"]
+    assert tail == ["--dangerously-bypass-approvals-and-sandbox", "--no-daemon", "-m", "gpt"]
 
 
 @pytest.mark.parametrize(
@@ -96,7 +96,7 @@ def test_yolo_without_a_worktree_is_refused_before_anything_starts(tmp_path, mon
 def test_safe_mode_passes_the_safe_flags(tmp_path, monkeypatch):
     started = _delegate_setup(tmp_path, monkeypatch, {})
     assert delegate.delegate_task("TASK-001") == 0
-    assert started[0][4] == herdr.permission_args("codex", "safe")
+    assert started[0][4] == herdr.permission_args("codex", "safe") + ["--no-daemon"]
 
 
 def test_yolo_in_a_worktree_passes_the_yolo_flags(tmp_path, monkeypatch):
@@ -106,7 +106,7 @@ def test_yolo_in_a_worktree_passes_the_yolo_flags(tmp_path, monkeypatch):
     monkeypatch.setattr(delegate.worktree, "changed_files", lambda w: ["a.py"])
     monkeypatch.setattr(delegate.worktree, "commit_all", lambda *a: True)
     assert delegate.delegate_task("TASK-001") == 0
-    assert started[0][4] == ["--dangerously-bypass-approvals-and-sandbox"]
+    assert started[0][4] == ["--dangerously-bypass-approvals-and-sandbox", "--no-daemon"]
 
 
 def test_a_review_never_runs_with_full_access(tmp_path, monkeypatch):
@@ -197,3 +197,10 @@ def test_a_failing_setup_removes_the_worktree_and_reports(repo, real_worktrees, 
     assert worktree.create("TASK-001", repo, {"setup": "echo boom >&2; exit 3"}) is None
     assert "boom" in capsys.readouterr().out
     assert not any((paths.gea_home() / "worktrees" / repo.name).iterdir())
+
+
+def test_agent_args_default_to_no_daemon_for_codex_and_can_be_overridden():
+    assert herdr.agent_args("codex", {}) == ["--no-daemon"]
+    assert herdr.agent_args("codex", {"agentArgs": {"codex": []}}) == []  # opt out
+    assert herdr.agent_args("codex", {"agentArgs": {"codex": ["--x"]}}) == ["--x"]
+    assert herdr.agent_args("opencode", {}) == []

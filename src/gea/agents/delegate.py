@@ -147,8 +147,7 @@ def delegate_task(
         agent.cli,
         agent.model,
         wt.path if wt else root,
-        herdr.permission_args(agent.cli, permissions)
-        + list(builders.get("agentArgs", {}).get(agent.cli, [])),
+        herdr.permission_args(agent.cli, permissions) + herdr.agent_args(agent.cli, builders),
     )
     print(status)
     if status.startswith("BLOCKED") or "FAILED" in status or "!=" in status:
