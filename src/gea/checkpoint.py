@@ -16,6 +16,7 @@ import json
 from pathlib import Path
 
 from gea import proc, ui
+from gea.agents import notify
 from gea.i18n import t
 
 SNAPSHOT_REF = "refs/gea/checkpoints/{task_id}"
@@ -126,5 +127,6 @@ def run_undo(task_id: str, assume_yes: bool = False, force: bool = False) -> int
     if not restore(task_id, root, force=True):
         ui.err(t("undo.failed"))
         return 1
+    notify.stop(root.name, task_id)
     ui.ok(t("undo.done", task_id=task_id))
     return 0

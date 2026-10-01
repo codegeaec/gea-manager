@@ -160,6 +160,11 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="run the builder in its own git worktree",
     )
+    delegate_parser.add_argument(
+        "--no-notify",
+        action="store_true",
+        help="do not prompt the orchestrator's pane when the builder finishes",
+    )
 
     skills_parser = subparsers.add_parser("skills", help="manage global gea skills")
     skills_sub = skills_parser.add_subparsers(dest="skills_command")
@@ -298,7 +303,12 @@ def _main(argv: list[str] | None = None) -> int:
     if args.command == "delegate":
         from gea.agents.delegate import delegate_task
 
-        return delegate_task(args.task_id, agent_id=args.agent, use_worktree=args.worktree)
+        return delegate_task(
+            args.task_id,
+            agent_id=args.agent,
+            use_worktree=args.worktree,
+            notify_orchestrator=not args.no_notify,
+        )
 
     if args.command == "skills":
         from gea.setup.skills import dispatch_skills

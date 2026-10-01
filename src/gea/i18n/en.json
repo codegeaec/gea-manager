@@ -163,5 +163,7 @@
   "delegate.main_touched": "builder wrote {count} file(s) in the main checkout instead of its worktree: {files}",
   "task.head_moved": "HEAD moved from {before} to {after} while closing the task — gea does not move HEAD; check `git reflog` (another process may have reset the branch) and `git merge-base --is-ancestor <sha> HEAD` for what you merged",
   "undo.head_moved": "HEAD moved since the checkpoint of {task_id} (commits were made or merged); undo would reset them away. Review `git log`, or pass --force to reset anyway.",
-  "delegate.crashed": "{task_id}: {agent} crashed (its CLI died mid-run, e.g. SIGILL) — worktree, branch and pane cleaned up; the task stays as it was."
+  "delegate.crashed": "{task_id}: {agent} crashed (its CLI died mid-run, e.g. SIGILL) — worktree, branch and pane cleaned up; the task stays as it was.",
+  "notify.message": "{task_id} finished ({outcome}). Run gea review-pack {task_id}",
+  "delegate.watching": "watching {task_id}: the orchestrator is notified when the builder finishes"
 }

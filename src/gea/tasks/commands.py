@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
+from gea.agents import notify
 from gea.i18n import t
 from gea.tasks import store
 
@@ -120,6 +123,7 @@ def dispatch_task(args) -> int:
         head_before = _head()
         if store.close_task(args.task_id):
             print(f"{args.task_id} closed")
+            notify.stop(Path.cwd().name, args.task_id)
             _offer_worktree_removal(args.task_id, assume_yes=args.yes)
             _warn_if_head_moved(head_before)
             return 0

@@ -163,5 +163,7 @@
   "delegate.main_touched": "el builder escribió {count} archivo(s) en el checkout principal en vez de su worktree: {files}",
   "task.head_moved": "HEAD pasó de {before} a {after} mientras se cerraba la task — gea no mueve HEAD; revisa `git reflog` (otro proceso pudo resetear la rama) y `git merge-base --is-ancestor <sha> HEAD` con lo que integraste",
   "undo.head_moved": "HEAD avanzó desde el checkpoint de {task_id} (se hicieron o integraron commits); undo los borraría con un reset. Revisa `git log`, o usa --force para resetear igual.",
-  "delegate.crashed": "{task_id}: {agent} se cayó (su CLI murió a mitad de corrida, p. ej. SIGILL) — worktree, rama y panel limpiados; la task queda como estaba."
+  "delegate.crashed": "{task_id}: {agent} se cayó (su CLI murió a mitad de corrida, p. ej. SIGILL) — worktree, rama y panel limpiados; la task queda como estaba.",
+  "notify.message": "{task_id} terminó ({outcome}). Corré gea review-pack {task_id}",
+  "delegate.watching": "vigilando {task_id}: se avisa al orquestador cuando el builder termine"
 }

@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 from gea import autonomy, checkpoint, config, paths, proc, ui, verify
-from gea.agents import exhaustion, herdr, log, profiles, worktree
+from gea.agents import exhaustion, herdr, log, notify, profiles, worktree
 from gea.i18n import t
 from gea.tasks import budget as budget_mod
 from gea.tasks import scope, store
@@ -99,7 +99,10 @@ def close_finished_pane(cfg: dict, pane_name: str, status: str, verify_ok: bool)
 
 
 def delegate_task(
-    task_id: str, agent_id: str | None = None, use_worktree: bool | None = None
+    task_id: str,
+    agent_id: str | None = None,
+    use_worktree: bool | None = None,
+    notify_orchestrator: bool = True,
 ) -> int:
     root = Path.cwd()
     task_path = find_task_path(task_id)
@@ -229,6 +232,10 @@ def delegate_task(
         return True
 
     budget = budget_mod.seconds_for(task_path, root)
+    if notify_orchestrator and notify.start(
+        task_id, task_path, root, pane_name, wt.path if wt else None, budget
+    ):
+        ui.info(t("delegate.watching", task_id=task_id))
     prompted = time.monotonic()
     out, code, error = herdr.prompt_result(pane_name, prompt, wait=True, budget_s=budget)
     if code == 0:  # `--wait` can return early between an agent's steps: confirm it is done
