@@ -24,3 +24,15 @@ def test_doctor_command_runs(capsys, monkeypatch):
     monkeypatch.setattr(doctor.shadcn, "detect_mcp_servers", lambda: [])
     assert main(["doctor"]) == 0
     assert "doctor" in capsys.readouterr().out.lower() or True
+
+
+def test_only_and_team_flags_open_workspace_with_workflow(monkeypatch):
+    from gea import cli, workspace
+
+    seen = []
+    monkeypatch.setattr(
+        workspace, "open_or_focus", lambda workflow=None: seen.append(workflow) or 0
+    )
+    assert cli.main(["--only"]) == 0
+    assert cli.main(["--team"]) == 0
+    assert seen == ["only", "team"]

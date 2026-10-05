@@ -16,6 +16,7 @@ guide` imprime la guía paso a paso (`gea guide plan|delegate|review|build`).
 | Pull request | `gea pr <ID>` |
 | Cambiar de orquestador | `gea handoff --to <cli>` |
 | Salud | `gea doctor` · `gea lint` |
+| Un solo agente, sin tasks ni builders | `gea --only` (se recuerda; `gea --team` vuelve al flujo normal) |
 
 Reglas de oro: toda task lleva `## Files` y `## Acceptance` llenos antes de
 delegar; los builders no commitean; el orquestador lee `gea review-pack`, no

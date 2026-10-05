@@ -333,3 +333,4 @@ def test_git_tab_skipped_without_lazygit(monkeypatch, tmp_path):
     monkeypatch.setattr(workspace.platform, "which", lambda name: None)
     workspace._ensure_git_tab("ws-1", tmp_path)
     assert not herdr.named("tab", "create")
+

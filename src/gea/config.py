@@ -33,6 +33,13 @@ AUTONOMY_LEVELS = ("supervised", "balanced", "autonomous")
 DEFAULT_AUTONOMY = "balanced"
 
 
+# `workflow`: "team" (default) = the orchestrator/builder flow with tasks;
+# "only" = a single agent doing everything itself, no tasks or delegation.
+# Personal (gea.local.json): see `set_workflow`.
+WORKFLOWS = ("team", "only")
+DEFAULT_WORKFLOW = "team"
+
+
 class ConfigError(Exception):
     """A config file is unusable (newer schema, wrong type, bad value)."""
 
@@ -61,6 +68,7 @@ DEFAULT_PROJECT_CONFIG: dict[str, Any] = {
     "tabs": [],
     # How much freedom a builder gets (see AUTONOMY_LEVELS and autonomy.py).
     "autonomy": DEFAULT_AUTONOMY,
+    "workflow": DEFAULT_WORKFLOW,
 }
 
 
@@ -76,6 +84,8 @@ def validate(data: dict[str, Any], path: Path) -> None:
     autonomy = data.get("autonomy", DEFAULT_AUTONOMY)
     if autonomy not in AUTONOMY_LEVELS:
         raise ConfigError(f"{path}: autonomy must be one of {', '.join(AUTONOMY_LEVELS)}")
+    if data.get("workflow", DEFAULT_WORKFLOW) not in WORKFLOWS:
+        raise ConfigError(f"{path}: workflow must be one of {', '.join(WORKFLOWS)}")
     builders = data.get("builders", {})
     close = builders.get("close", DEFAULT_CLOSE)
     if close not in CLOSE_POLICIES:
@@ -169,7 +179,7 @@ def save_global(data: dict[str, Any]) -> None:
 # Team mode: `gea.json` is the project's policy (committed, shared) and
 # `gea.local.json` (gitignored) holds this person's own choices, which win
 # on load. These are the keys that belong in the personal file.
-PERSONAL_KEYS = ("agents",)
+PERSONAL_KEYS = ("agents", "workflow")
 LEGACY_KEYS = ("primary", "primaryModel")  # replaced by `agents`; dropped on save
 PERSONAL_BUILDER_KEYS = ("mode",)
 
@@ -241,6 +251,8 @@ def split_project(data: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]
     personal = {}
     if agents_dict := spec.from_config(data).to_dict():  # also migrates the old keys
         personal["agents"] = agents_dict
+    if data.get("workflow", DEFAULT_WORKFLOW) != DEFAULT_WORKFLOW:
+        personal["workflow"] = data["workflow"]
     builders = dict(shared.get("builders", {}))
     builders.pop("allow", None)  # now `agents.subagents`
     defaults = DEFAULT_PROJECT_CONFIG["builders"]
@@ -259,3 +271,22 @@ def save_project(repo_root: Path, data: dict[str, Any]) -> None:
     _write_json(project_config_path(repo_root), shared)
     if personal or local_config_path(repo_root).exists():
         _write_json(local_config_path(repo_root), {"schema_version": SCHEMA_VERSION, **personal})
+
+
+def set_workflow(repo_root: Path, workflow: str) -> None:
+    """Remember `workflow` for this person in gea.local.json (never gea.json)."""
+    if workflow not in WORKFLOWS:
+        raise ConfigError(f"workflow must be one of {', '.join(WORKFLOWS)}")
+    path = local_config_path(repo_root)
+    try:
+        personal = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    except json.JSONDecodeError:
+        personal = {}
+    if not isinstance(personal, dict):
+        raise ConfigError(f"{path}: expected a JSON object")
+    personal["schema_version"] = SCHEMA_VERSION
+    if workflow == DEFAULT_WORKFLOW:
+        personal.pop("workflow", None)
+    else:
+        personal["workflow"] = workflow
+    _write_json(path, personal)

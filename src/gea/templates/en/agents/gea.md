@@ -16,6 +16,7 @@ step-by-step guide (`gea guide plan|delegate|review|build`).
 | Pull request | `gea pr <ID>` |
 | Switch orchestrator | `gea handoff --to <cli>` |
 | Health | `gea doctor` · `gea lint` |
+| One agent only, no tasks or builders | `gea --only` (remembered; `gea --team` goes back to the normal flow) |
 
 Rules of thumb: every task has `## Files` and `## Acceptance` filled in before
 delegating; builders never commit; the orchestrator reads `gea review-pack`,

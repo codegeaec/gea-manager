@@ -7,8 +7,11 @@ Tabs, idempotent by label (ported from the old herdr-setup gist's
   unset, started with `agents.plannerModel` when the CLI has a model flag), an
   interactive CLI tab. On a brand-new workspace it
   reuses the tab herdr creates with the workspace, so no stray "1" is left.
+  With `gea --only` (workflow "only", claude) it starts with a system prompt
+  that turns off the task/delegation flow.
 - `terminal` — a plain shell, for anything else the user wants to run by hand.
-- `git` — lazygit, when it's installed (started only when the tab is created).
+- `git` — lazygit, when it's installed (started when the tab is created, and
+  again on a later `gea` if the tab is back at an empty shell prompt).
 - one tab per entry of gea.json["tabs"] (`label`, `cwd` relative to the repo,
   optional `command` run only when the tab is created), e.g. for monorepos.
 """
@@ -30,6 +33,8 @@ from gea.agents.herdr import (
     prompt_pane,
 )
 from gea.agents.herdr import safe_label as _safe_label
+
+ONLY_FLAG = "--append-system-prompt"
 
 
 def _find_repo_root(start: Path | None = None) -> Path:
@@ -69,14 +74,45 @@ def _find_or_create_workspace(label: str, repo_root: Path) -> Workspace | None:
     )
 
 
-def _existing_tab_id(workspace_id: str, label: str) -> str | None:
+def _find_tab(workspace_id: str, label: str) -> dict | None:
     listing, err = herdr_json(["tab", "list", "--workspace", workspace_id])
     if err:
         return None
     for tab in listing.get("tabs", []):
         if tab.get("label") == label:
-            return tab.get("tab_id")
+            return tab
     return None
+
+
+def _existing_tab_id(workspace_id: str, label: str) -> str | None:
+    return (_find_tab(workspace_id, label) or {}).get("tab_id")
+
+
+def _tab_process(workspace_id: str, tab_id: str | None) -> tuple[str | None, dict]:
+    """(pane_id, process_info) of the tab's first pane; (None, {}) if unknown."""
+    if not tab_id:
+        return None, {}
+    listing, err = herdr_json(["pane", "list", "--workspace", workspace_id])
+    if err:
+        return None, {}
+    pane_id = next(
+        (p.get("pane_id") for p in listing.get("panes", []) if p.get("tab_id") == tab_id), None
+    )
+    if not pane_id:
+        return None, {}
+    info, err = herdr_json(["pane", "process-info", "--pane", pane_id])
+    return pane_id, ({} if err else info.get("process_info", {}))
+
+
+def _is_idle_shell(info: dict) -> bool:
+    """True when the pane's own shell is in the foreground: nothing is running."""
+    group = info.get("foreground_process_group_id")
+    return group is not None and group == info.get("shell_pid")
+
+
+def _has_arg(info: dict, flag: str) -> bool:
+    procs = info.get("foreground_processes", [])
+    return any(flag in p.get("argv", []) for p in procs)
 
 
 def _create_tab(workspace_id: str, repo_root: Path, label: str) -> str | None:
@@ -108,23 +144,32 @@ def _ensure_agent_tab(
     initial: tuple[str, str] | None = None,
     agent_name: str | None = None,
     model: str | None = None,
+    extra_args: list[str] | None = None,
 ) -> bool:
     """Make the `<label>` tab and start `cli` in it if it doesn't exist yet
     (reusing `initial` = (tab_id, pane_id), the tab a new workspace comes
-    with, when given). Returns True only when this call actually created and
-    started it — callers use that to do first-time-only setup (e.g. picking a
-    model), never on a reopen of an already-running tab."""
-    if _existing_tab_id(workspace_id, label):
-        return False
-    pane_id = _adopt_initial_tab(initial, label) if initial else None
-    pane_id = pane_id or _create_tab(workspace_id, repo_root, label)
-    if not pane_id:
-        ui.warn(f"could not create tab '{label}'")
-        return False
+    with, when given). An existing tab whose pane is back at an empty shell
+    (the agent died) gets the agent started again. Returns True only when this
+    call actually started it — callers use that to do first-time-only setup
+    (e.g. picking a model), never on a reopen of an already-running tab."""
+    tab = _find_tab(workspace_id, label)
+    if tab:
+        pane_id, info = _tab_process(workspace_id, tab.get("tab_id"))
+        if not pane_id or not _is_idle_shell(info):
+            if pane_id and cli == "claude" and _has_arg(info, ONLY_FLAG) != bool(extra_args):
+                ui.warn(f"'{label}' runs in the other mode — /exit it and run gea again")
+            return False
+        ui.ok(f"'{label}' was not running — starting it again")
+    else:
+        pane_id = _adopt_initial_tab(initial, label) if initial else None
+        pane_id = pane_id or _create_tab(workspace_id, repo_root, label)
+        if not pane_id:
+            ui.warn(f"could not create tab '{label}'")
+            return False
     cli_cfg = CLI_ARGS.get(cli, DEFAULT_CLI_ARGS)
     start_args = [
         "agent", "start", agent_name or label, "--kind", cli, "--pane", pane_id, "--",
-    ] + cli_cfg["base"]
+    ] + cli_cfg["base"] + (extra_args or [])
     if model:  # claude has no start flag: its model goes in through /model afterwards
         start_args += [flag.format(model=model) for flag in cli_cfg["model"]]
     _result, err = herdr_json(start_args, timeout=65)
@@ -146,12 +191,17 @@ def _ensure_git_tab(workspace_id: str, repo_root: Path) -> None:
     if not lazygit:
         ui.warn("lazygit not found — skipping the 'git' tab (run `gea update` to install it)")
         return
-    if _existing_tab_id(workspace_id, "git"):
-        return
-    pane_id = _create_tab(workspace_id, repo_root, "git")
-    if not pane_id:
-        ui.warn("could not create tab 'git'")
-        return
+    tab = _find_tab(workspace_id, "git")
+    if tab:  # relaunch only if lazygit died and left the pane at its shell
+        pane_id, info = _tab_process(workspace_id, tab.get("tab_id"))
+        if not pane_id or not _is_idle_shell(info):
+            return
+        ui.ok("lazygit was not running — starting it again")
+    else:
+        pane_id = _create_tab(workspace_id, repo_root, "git")
+        if not pane_id:
+            ui.warn("could not create tab 'git'")
+            return
     _result, err = herdr_json(["pane", "run", pane_id, lazygit])
     if err:
         ui.warn(f"tab 'git': could not start lazygit ({err})")
@@ -178,8 +228,24 @@ def _ensure_extra_tabs(workspace_id: str, repo_root: Path, tabs: list[dict]) -> 
                 ui.warn(f"tab '{label}': could not run its command ({err})")
 
 
-def open_or_focus() -> int:
+def _only_args(cfg: dict, primary: str) -> list[str]:
+    """Claude's start args for workflow "only": a system prompt (it outranks
+    CLAUDE.md) that switches off the orchestrator/task flow, nothing written
+    to the repo. Other CLIs have no equivalent flag, so they run as usual."""
+    if cfg.get("workflow") != "only":
+        return []
+    if primary != "claude":
+        ui.warn(f"--only needs claude as the planner (it is '{primary}') — running as usual")
+        return []
+    from gea.init.scaffold import read_template
+
+    return [ONLY_FLAG, read_template(config.agents_lang(cfg), "agents/only.md").strip()]
+
+
+def open_or_focus(workflow: str | None = None) -> int:
     repo_root = _find_repo_root()
+    if workflow:
+        config.set_workflow(repo_root, workflow)
     cfg = config.load_project(repo_root)
     planner = config.agents(cfg)
     primary = planner.planner
@@ -198,7 +264,8 @@ def open_or_focus() -> int:
 
     name = free_agent_name(agent_name(project_prefix(repo_root), primary), workspace_id)
     created = _ensure_agent_tab(
-        workspace_id, repo_root, primary, primary, initial, name, planner.planner_model
+        workspace_id, repo_root, primary, primary, initial, name, planner.planner_model,
+        _only_args(cfg, primary),
     )
     _ensure_plain_tab(workspace_id, repo_root, "terminal")
     _ensure_git_tab(workspace_id, repo_root)

@@ -17,6 +17,14 @@ from gea.i18n import t
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="gea", description=t("cli.description"))
     parser.add_argument("--version", action="store_true", help="print gea's version")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
+        "--only", action="store_true",
+        help="work with a single agent, no tasks or builders (remembered for this project)",
+    )
+    mode.add_argument(
+        "--team", action="store_true", help="back to the orchestrator/builders flow (the default)"
+    )
 
     subparsers = parser.add_subparsers(dest="command")
 
@@ -201,6 +209,11 @@ def _main(argv: list[str] | None = None) -> int:
         return workspace.open_or_focus()
 
     args = parser.parse_args(argv)
+
+    if args.command is None and (args.only or args.team):
+        from gea import workspace
+
+        return workspace.open_or_focus("only" if args.only else "team")
 
     if args.version:
         print(t("version.label", version=__version__))

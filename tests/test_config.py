@@ -29,3 +29,13 @@ def test_load_project_merges_existing_file(tmp_path):
     data = config.load_project(tmp_path)
     assert data["lang"] == {"commits": "en"}
     assert data["tasks"]["location"] == "home"
+
+
+def test_invalid_workflow_rejected(tmp_path):
+    import pytest
+
+    from gea import config
+
+    (tmp_path / "gea.json").write_text('{"schema_version": 1, "workflow": "x"}')
+    with pytest.raises(config.ConfigError):
+        config.load_project(tmp_path)
